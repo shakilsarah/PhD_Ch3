@@ -28,7 +28,7 @@ library(dplyr) # needed for select() function among others
 df <- "Optics/Data/"
 
 ## Call book code with necessary functions (e.g. pairs function; Zuur 2009, Mixed Effects Models and Extensions)
-source(paste0("ThesisDrafts/Statistics/MixedEffectsModels/HighstatLibV10.R"))
+source("functions/HighstatLibV10.R")
 # change above to functions/
 ## for calculating summary stats
 se <- function(x) sqrt(var(x, na.rm=TRUE)/length(x[!is.na(x)])) 
