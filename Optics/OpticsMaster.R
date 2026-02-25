@@ -25,13 +25,11 @@ library(dplyr) # needed for select() function among others
 #library(plyr) #needed for ddply
 
 ## Set Working Directory
-#MAC:wd <- "~/Dropbox/"
-#PC: 
-wd <- "D:/Users/sarah/Dropbox/"
+df <- "Optics/Data/"
 
 ## Call book code with necessary functions (e.g. pairs function; Zuur 2009, Mixed Effects Models and Extensions)
-source(paste0(wd,"ThesisDrafts/Statistics/MixedEffectsModels/HighstatLibV10.R"))
-
+source(paste0("ThesisDrafts/Statistics/MixedEffectsModels/HighstatLibV10.R"))
+# change above to functions/
 ## for calculating summary stats
 se <- function(x) sqrt(var(x, na.rm=TRUE)/length(x[!is.na(x)])) 
 ## create standard error function for use below
@@ -40,9 +38,7 @@ lengthnona <- function(x) length(x[!is.na(x)])
 
 ##### ==============================Section 1: Optics data from Chapter 1 ===================================================
 
-df <- "ThesisDrafts/Chapter1/Optics/"
-
-p <- read.csv(paste0(wd, df, "masteroptics_p.csv"))
+p <- read.csv(paste0(df, "masteroptics_p.csv"))
 
 p <- p %>%
      select(sampcode,
@@ -74,14 +70,12 @@ p$sampcode[p$slumpsite==0] <- "0_NA_SS-0000_2017-07-17_Sample_1"
 
 # (2.1) Load component Fmax for each sample =====
 # fmax of peaks
-m3pathdom <- "Fluorescence/Sampleanalyses/DOM/DOM20210209_ch2-3/modelruns/Model3/"
-m3 <- read_excel(paste0(wd, m3pathdom, "drEEM_PARAFAC_model3.xls"), sheet="Model3Loading")
+m3 <- read_excel(paste0(df, "drEEM_PARAFAC_model3.xls"), sheet="Model3Loading")
 m3 <- na.omit(subset(m3, select=c("i", "Fmax1", "Fmax2", "Fmax3")))
 
 
 # (2.2) Load Supplementary Calculations =====
-scpath <- "Fluorescence/Sampleanalyses/DOM/DOM20210209_ch2-3/SupplementalCalculations/"
-scdom <- read.csv(paste0(wd,scpath,"SuppCalc.csv"))
+scdom <- read.csv(paste0(df,"SuppCalc.csv"))
 
 # (2.3) Merge by row#s =====
 mod3 <- merge(m3, scdom, by=0)
@@ -135,8 +129,7 @@ master <- merge(p, mod3, by="sampcode", all=TRUE)
 ##### ==============================Section 3: Read in DOM Absorbance Data ===================================================
 
 # (3.1) Read in DOM Abs data =====
-m4pathdom <- "ThesisDrafts/Chapter3/Optics/2017/"
-m4 <- read.csv(paste0(wd, m4pathdom, "2017DOMAbsIndices.csv"))
+m4 <- read.csv(paste0(df, "2017DOMAbsIndices.csv"))
 m4 <- m4 %>% select(site, date, samptype, SR_d=SR_m, 
                     a254dec_d=a254dec_m, 
                     atot250450_d=atot250450nap_m)
@@ -149,4 +142,4 @@ master <- merge(m4, master,
 
 # (1.8) Write to csv file =====
 
-write.csv(master, paste0(wd, "ThesisDrafts/Chapter3/Data/masteroptics.csv"))
+write.csv(master, paste0(df, "ThesisDrafts/Chapter3/Data/masteroptics.csv"))

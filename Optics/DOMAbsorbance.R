@@ -24,22 +24,19 @@ library(dplyr) # runs calculations on data subsets (e.g. per sample); easier on 
 library(stringr)
 
 ## Set Working Directory
-#MAC: wd <- "~/Dropbox/"
-#PC:
-wd <- "D:/Users/sarah/Dropbox/"
-datafolder <- "Thesisdrafts/Chapter3/Optics/2017/"
+datafolder <- "Optics/Data/"
 
 ##### ==============================Section 1: Prep Data ===================================================
 
 ## === 1.1 Read in Sample Info and merge =====
 
 # ACCESS Database codes (for matching with other datasets)
-sampleinfo <- read_excel(paste0(wd, datafolder, "Ch3_OceanOptics.xlsx"), sheet=1)
+sampleinfo <- read_excel(paste0(datafolder, "Ch3_OceanOptics.xlsx"), sheet=1)
 sampleinfo <- sampleinfo %>% select(-integrationtime_s)
 # hold on, maybe merge this in later
 
 # fileids (extracted from filenames in folder)
-filenames <- read.csv(paste0(wd, datafolder, "abs2017sampleIDs.csv"))
+filenames <- read.csv(paste0(datafolder, "abs2017sampleIDs.csv"))
 filenames <- filenames %>% select(filenames=x)
 
 filenames$type <- "Sample"
@@ -52,7 +49,7 @@ filenames$type[filenames$filenames=="Absorbance_14-39-37-529"|
 
 ## === 1.2 Read in Absorbance Data  =====
 # obtain data with raw absorbance from sheet 2 in excel file
-a <- read.csv(paste0(wd, datafolder, "abs2017.csv"))
+a <- read.csv(paste0(datafolder, "abs2017.csv"))
 a <- a %>% select(-X)
 
 ## === 1.1 Merge with filenames =====
@@ -289,7 +286,7 @@ plot(DOMAbs$SR_c~DOMAbs$a254dec_m)
 plot(DOMAbs$SR_c[DOMAbs$SR_c<100]~DOMAbs$a254dec_m[DOMAbs$SR_c<100]) # only 1 sample is >100, at >800, most likely an error, will remove from analysis
 
 # (2.9) Export data to csv file =====
-write.csv(DOMAbs, paste0(wd, datafolder, "2017DOMAbsIndices.csv"))
+write.csv(DOMAbs, paste0(datafolder, "2017DOMAbsIndices.csv"))
 
 
 # Archived code for removing opticall dense samples =====

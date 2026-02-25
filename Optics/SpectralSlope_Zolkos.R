@@ -8,7 +8,7 @@
 
   # Set working directory
     #*NOTE: 'wdir' should reference one folder level above raw data; raw data must be in folders names "Aqualog" and "OceanOptics"
-    wdir <- "D:/Users/sarah/Dropbox/ThesisDrafts/Chapter3/Optics/DEMO/"
+    wdir <- "Optics/Data/"
   
   # BACKGROUND FUNCTIONS
     # Horiba Aqualog: function to calculate baseline-corrected Naperian absorption coefficient for absorbance data from 200-800 nm
