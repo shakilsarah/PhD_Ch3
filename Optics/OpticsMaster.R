@@ -42,7 +42,7 @@ lengthnona <- function(x) length(x[!is.na(x)])
 
 df <- "ThesisDrafts/Chapter1/Optics/"
 
-p <- read.csv(paste0(wd, df, "masteroptics.csv"))
+p <- read.csv(paste0(wd, df, "masteroptics_p.csv"))
 
 p <- p %>%
      select(sampcode,
