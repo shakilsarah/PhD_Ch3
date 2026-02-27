@@ -10,8 +10,7 @@ library(stringr)
 library(plyr)
 library(purrr)
 
-wd <- "D:/Users/sarah/Dropbox/"
-df <- "ThesisDrafts/Chapter3/Optics/2017/OceanOptics/"
+df <- "Optics/data/OceanOptics/"
 
 
  read_OO <- function(filename){
@@ -32,5 +31,5 @@ filelist <- lapply(filelist, setNames, colnames)
 abs2017 <- plyr::join_all(filelist, by = c("Wavelength","Absorbance", "SampleIDs"),
                type = "full", match = "all")
 
-write.csv(abs2017, paste0(wd, "ThesisDrafts/Chapter3/Optics/2017/abs2017.csv"))
-write.csv(SampleIDs, paste0(wd,"ThesisDrafts/Chapter3/Optics/2017/abs2017sampleIDs.csv" ))
+write.csv(abs2017, paste0("Optics/data/abs2017.csv"))
+write.csv(SampleIDs, paste0("Optics/data/abs2017sampleIDs.csv" ))
