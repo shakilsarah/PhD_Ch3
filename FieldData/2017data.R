@@ -13,10 +13,7 @@ list=rm(list=ls(all=TRUE))
 
 ## Set working directory
 
-# MAC: wd <- "~/Dropbox/"
-
-# PC: 
-wd <- "D:/Users/sarah/Dropbox/"
+df <- "FieldData/data/"
 
 # load libraries
 library(dplyr)
@@ -42,15 +39,12 @@ source(paste0(wd,"ThesisDrafts/Statistics/MixedEffectsModels/HighstatLibV10.R"))
 
 # (1.1) OC and TSS fluxes ====================
 
-df <- "ThesisDrafts/Chapter3/Data/" 
-df2 <- "ThesisDrafts/Chapter3/ZolkosFiles/" 
-  
-tss <- read_excel(paste0(wd, df, "2015-17 TSS Combine.xlsx"))
-poc <- read_excel(paste0(wd, df, "20162017POCPO14CTrans.xlsx"))
-doc <- read_excel(paste0(wd, df, "2017DOC.xlsx"))
-dis <- read_excel(paste0(wd, df, "Discharge Step 6_ Extrapolate Any partial Q.xlsx"))
-disscott <- read_excel(paste0(wd, df2, "Zolkos Q area coords compiled.xlsx"), sheet="transectforR")
-docscott <- read_excel(paste0(wd, df2, "c4_sc_doc.xlsx"), sheet="c4_sc_doc")
+tss <- read_excel(paste0(df, "2015-17 TSS Combine.xlsx"))
+poc <- read_excel(paste0(df, "20162017POCPO14CTrans.xlsx"))
+doc <- read_excel(paste0(df, "2017DOC.xlsx"))
+dis <- read_excel(paste0(df, "Discharge Step 6_ Extrapolate Any partial Q.xlsx"))
+disscott <- read_excel(paste0(df, "Zolkos Q area coords compiled.xlsx"), sheet="transectforR")
+docscott <- read_excel(paste0(df, "c4_sc_doc.xlsx"), sheet="c4_sc_doc")
 
 #match discott to poc code
 disscott$loc <- "NA"
@@ -139,7 +133,7 @@ oc <- merge(oc, doc, all=TRUE)
 oc <- merge(oc, dis)
 
 ## (1.2) gis data ====================
-gis <- read.csv(paste0(wd, df, "watmaster.csv"))
+gis <- read.csv(paste0(df, "watmaster.csv"))
 
 pairs(gis[,c(8, 13:ncol(gis))])
 
@@ -200,10 +194,10 @@ t$percslump17all[is.na(t$percslump17all)] <- 0
 
 dfrain <- "ThesisDrafts/Chapter3/WeatherStationData/"
 
-rain24 <- read.csv(paste0(wd, dfrain, "24hrsClimateWindow.csv"))
-rain48 <- read.csv(paste0(wd, dfrain, "48hrsClimateWindow.csv"))
-rain72 <- read.csv(paste0(wd, dfrain, "72hrsClimateWindow.csv"))
-rain96 <- read.csv(paste0(wd, dfrain, "96hrsClimateWindow.csv"))
+rain24 <- read.csv(paste0(df, "24hrsClimateWindow.csv"))
+rain48 <- read.csv(paste0(df, "48hrsClimateWindow.csv"))
+rain72 <- read.csv(paste0(df, "72hrsClimateWindow.csv"))
+rain96 <- read.csv(paste0(df, "96hrsClimateWindow.csv"))
 
 rain24 <- rain24 %>% select(date=Date, site, RainTot24)
 rain48 <- rain48 %>% select(date=Date, site, RainTot48)
@@ -220,10 +214,10 @@ rain$date <- as.Date(rain$date)
 t <- merge(t, rain, by=c("site", "date"), all.x=TRUE)
 
 ## (1.6)  Rain data for Stony mainstem ====================
-rain24t <- read.csv(paste0(wd, dfrain, "24hrsClimateWindow_stonytransscott.csv"))
-rain48t <- read.csv(paste0(wd, dfrain, "48hrsClimateWindow_stonytransscott.csv"))
-rain72t <- read.csv(paste0(wd, dfrain, "72hrsClimateWindow_stonytransscott.csv"))
-rain96t <- read.csv(paste0(wd, dfrain, "96hrsClimateWindow_stonytransscott.csv"))
+rain24t <- read.csv(paste0(df, "24hrsClimateWindow_stonytransscott.csv"))
+rain48t <- read.csv(paste0(df, "48hrsClimateWindow_stonytransscott.csv"))
+rain72t <- read.csv(paste0(df, "72hrsClimateWindow_stonytransscott.csv"))
+rain96t <- read.csv(paste0(df, "96hrsClimateWindow_stonytransscott.csv"))
 
 rain24t <- rain24t %>% select(date=Date, site, RainTot24)
 rain48t <- rain48t %>% select(date=Date, site, RainTot48)
@@ -254,7 +248,7 @@ t <- t %>% rename(RainTot24 = RainTot24.x,
 
 ## (1.7)  Add in streambed particle size data ====================
 
-ps <- read.csv(paste0(wd, df, "streambedparticlesizedateadded.csv"))
+ps <- read.csv(paste0(df, "streambedparticlesizedateadded.csv"))
 ps <- ps %>% select(site, D50, psand)
 ps$streambednotes <- NA
 
@@ -269,13 +263,11 @@ t <- merge(ps, t, all=TRUE)
 
 ## (1.8)  Add in cation data ===============================
 
-df <- "ThesisDrafts/Chapter3/Data/RawData/" 
-
 cations <- read_excel(
-  paste0(wd, df, "Sarah Shakil 2017 reported on Feb 22, 18.xlsx"),
+  paste0(df, "Sarah Shakil 2017 reported on Feb 22, 18.xlsx"),
   sheet="forR")
 
-catids <- read_excel(paste0(wd, df, "SarahShakil_Peel2017_SampleList.xlsx"),
+catids <- read_excel(paste0(df, "SarahShakil_Peel2017_SampleList.xlsx"),
                      sheet="CationsforR")
 
 # (1.8.1) Clean and merge with site ids =====
@@ -286,7 +278,7 @@ cations <- cations %>%
          CamgL = `Ca (mg/L)`,
          MgmgL = `Mg (mg/L)`,
          FemgL = `Fe (mg/L)`,
-         SrmgL = `Sr (µg/L)`) %>%
+         SrmgL = `Sr (?g/L)`) %>%
   filter(NamgL!=-1)
 
 cations$NamgL[cations$NamgL=="<MDL"] <- 0.0160/2
@@ -316,10 +308,10 @@ t <- merge(t, cat, by=c("site", "date"), all.x=TRUE)
 ## (1.9)  Add in sulphate data ===============================
 
 so4cl <- read_excel(
-  paste0(wd, df, "Sarah Shakil 2017 reported on Feb 22, 18.xlsx"), 
+  paste0(df, "Sarah Shakil 2017 reported on Feb 22, 18.xlsx"), 
   sheet="forR")
 
-anids <- read_excel(paste0(wd, df, "SarahShakil_Peel2017_SampleList.xlsx"),
+anids <- read_excel(paste0(df, "SarahShakil_Peel2017_SampleList.xlsx"),
                     sheet="AnionsforR")
 
 ## (1.9.1) Clean and merge with site ids =====
@@ -348,10 +340,10 @@ t <- merge(t, so4, by=c("site", "date"), all.x=TRUE)
 ## (1.10)  Add in sulphate data ===============================
 
 o18 <- read_excel(
-  paste0(wd, df, "Sarah Shakil 2017 reported on Feb 22, 18.xlsx"),
+  paste0(df, "Sarah Shakil 2017 reported on Feb 22, 18.xlsx"),
   sheet="forR")
 
-o18ids <- read_excel(paste0(wd, df, "SarahShakil_Peel2017_SampleList.xlsx"),
+o18ids <- read_excel(paste0(df, "SarahShakil_Peel2017_SampleList.xlsx"),
                      sheet="18O_DHforR")
 
 ## (1.10.1) Clean and merge with site ids =====
@@ -372,7 +364,6 @@ o18 <- o18 %>%
 t <- merge(t, o18, by=c("site", "date"), all.x=TRUE)
 
 ## (1.11)  Add in cleaned field data (slope, ysi, channel morphometry) ===============================
-df <- "ThesisDrafts/Chapter3/Data/"
 
 field <- read.csv(paste0(wd, df, "field2017datacleaned.csv"))
 
@@ -386,9 +377,8 @@ field <- field %>%
 t <- merge(t, field, by=c("site", "date"), all=TRUE)
 
 ## (1.11)  Add in Chla concentrations (ug/L) ===============================
-dfchl <- "ThesisDrafts/Chapter3/Chlorophyll/"
 
-chla <- read_excel(paste0(wd, dfchl, "ChlaCalc-SampleRun-Shakil-21SEP2017.xlsx"), sheet="forR")
+chla <- read_excel(paste0(df, "ChlaCalc-SampleRun-Shakil-21SEP2017.xlsx"), sheet="forR")
 
 # chla detection limit is 1ug/L for a 200 mL sample, will roughly equate that too 0.2ug
 # can't do half DL because the volumes filtered are so variable it will inflate some values to unreal numbers
@@ -429,4 +419,4 @@ t$streampower <- (1000)*(9.8)*(t$Q_m3s)*(t$slope)
 
 ## (1.11) Write CSV ====================
 
-write.csv(t, paste0(wd, df, "2017data.csv"))
+write.csv(t, paste0(df, "2017data.csv"))
