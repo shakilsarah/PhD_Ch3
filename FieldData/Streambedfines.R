@@ -12,11 +12,7 @@
 list=rm(list=ls(all=TRUE))
 
 ## Set working directory
-
-# MAC: wd <- "~/Dropbox/"
-
-# PC: 
-wd <- "D:/Users/sarah/Dropbox/"
+df <- "FieldData/data/"
 
 # load libraries
 library(dplyr)
@@ -37,9 +33,7 @@ lengthnona <- function(x) {
 ##### ========== (1) DATA PREP ==========================================================================
 
 ## (1.1) Read in OC yields, PO13C, and POCTSSrat ====================
-df <- "ThesisDrafts/Chapter3/Data/" 
-
-d <- read.csv(paste0(wd, df, "2017data.csv"))
+d <- read.csv(paste0(df, "2017data.csv"))
 
 d <- d %>%
   select(campaign, site, date, D50, psand, tssmgL,
@@ -58,7 +52,7 @@ d <- d %>%
 d$date <- as.character(as.Date(d$date))
 
 ## (1.2) Read in transect distances ====================
-dist <- read_excel(paste0(wd, df, "20162017POCPO14CTrans.xlsx"))
+dist <- read_excel(paste0(df, "20162017POCPO14CTrans.xlsx"))
 dist <- dist %>%
         filter(`Sample Type`=="Sample" & `Stream Location`=="PERI") %>%
         select(site = `Slump Site`,
@@ -72,7 +66,7 @@ dist <- dist %>%
 dist$date <- as.character(as.Date(dist$date))
 
 ## (1.3) Read in OC optics ====================
-o <- read.csv(paste0(wd, df, "masteroptics2.csv"))
+o <- read.csv(paste0(df, "masteroptics2.csv"))
 o <- o %>%
      select(site, date, JDay, prcntC1_p, prcntC3_p, SR_d, SUVA254, slumpYN)
 
@@ -80,7 +74,7 @@ o$date <- as.character(as.Date(o$date))
 
 ## (1.4) Distance from nearest active slump ====================
 
-sdist <- read_excel(paste0(wd, df, "slumpstreamdist.xlsx"))
+sdist <- read_excel(paste0(df, "slumpstreamdist.xlsx"))
 
 ## (1.5) Merge together ====================
 
@@ -141,7 +135,7 @@ finec <- ggplot() +
 library(grid)
 
 savePlotpdf <- function(myPlot) {
-  pdf(file = paste0(wd, "ThesisDrafts/Chapter3/Graphs/Fig4/", filename, ".pdf"),
+  pdf(file = paste0(wd, "Figures/", filename, ".pdf"),
       width = 6, height = 3)
   print(myPlot)
   dev.off()

@@ -12,11 +12,7 @@
 list=rm(list=ls(all=TRUE))
 
 ## Set working directory
-
-# MAC: wd <- "~/Dropbox/"
-
-# PC: 
-wd <- "D:/Users/sarah/Dropbox/"
+df <- "FieldData/data/"
 
 # load libraries
 library(dplyr)
@@ -34,14 +30,10 @@ lengthnona <- function(x) {
   length(x[!is.na(x)])
 }
 
-
 ##### ========== (1) DATA PREP =========================================================================
 
-# (1.1) Data folder ====
-df <- "Thesisdrafts/Chapter3/Data/"
-
 # (1.2) trans ====
-site <- read_excel(paste0(wd, df, "Daily_Site_Data.xlsx"))
+site <- read_excel(paste0(df, "Daily_Site_Data.xlsx"))
 site$year <- format(site$`Sampling Date`, format="%Y")
 
 # average long and lat per site 
@@ -181,4 +173,4 @@ ch3sites <- ch3sites%>%
 
 ##### ========== (3) Print for ArcGIS =======================================================================
 
-write.csv(ch3sites, paste0(wd, df, "ch3sitecoord.csv"))
+write.csv(ch3sites, paste0(df, "ch3sitecoord.csv"))

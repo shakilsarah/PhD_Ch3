@@ -13,10 +13,7 @@ list=rm(list=ls(all=TRUE))
 
 ## Set working directory
 
-# MAC: wd <- "~/Dropbox/"
-
-# PC: 
-wd <- "D:/Users/sarah/Dropbox/"
+df <- "FieldData/data/"
 
 # load libraries
 library(dplyr)
@@ -36,13 +33,11 @@ lengthnona <- function(x) {
 }
 
 ## Call book code with necessary functions (e.g. pairs function; Zuur 2009, Mixed Effects Models and Extensions)
-source(paste0(wd,"ThesisDrafts/Statistics/MixedEffectsModels/HighstatLibV10.R"))
+source("functions/HighstatLibV10.R")
 
 ##### ========== (1) DATA PREP ==========================================================================
 
-df <- "ThesisDrafts/Chapter3/Data/FieldData/" 
-
-ps <- read_excel(paste0(wd, df, "2017_FieldSeasonData-081617.xlsx"), sheet="Bed Material")
+ps <- read_excel(paste0(df, "2017_FieldSeasonData-081617.xlsx"), sheet="Bed Material")
 
 ### (1.1) remove where pebble counts weren't done ==========
 
@@ -146,6 +141,4 @@ psf$psand[is.na(psf$psand)] <- 0
 
 ### (1.4) Write to csv ===========
 
-df <- "ThesisDrafts/Chapter3/Data/" 
-
-write.csv(psf, paste0(wd, df, "streambedparticlesize.csv"))
+write.csv(psf, paste0(df, "streambedparticlesize.csv"))
