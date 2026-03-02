@@ -12,7 +12,7 @@
 list=rm(list=ls(all=TRUE))
 
 ## Set working directory
-df <- "FieldData/data/"
+df <- "Data/"
 
 # load libraries
 library(dplyr)

@@ -25,7 +25,7 @@ library(dplyr) # needed for select() function among others
 #library(plyr) #needed for ddply
 
 ## Set Working Directory
-df <- "Optics/Data/"
+df <- "Data/"
 
 ## Call book code with necessary functions (e.g. pairs function; Zuur 2009, Mixed Effects Models and Extensions)
 source("functions/HighstatLibV10.R")

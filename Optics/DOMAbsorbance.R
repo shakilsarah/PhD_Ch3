@@ -24,7 +24,7 @@ library(dplyr) # runs calculations on data subsets (e.g. per sample); easier on 
 library(stringr)
 
 ## Set Working Directory
-datafolder <- "Optics/Data/"
+datafolder <- "Data/"
 
 ##### ==============================Section 1: Prep Data ===================================================
 

@@ -10,7 +10,7 @@ library(stringr)
 library(plyr)
 library(purrr)
 
-df <- "Optics/data/OceanOptics/"
+df <- "Data/OceanOptics/"
 
 
  read_OO <- function(filename){
