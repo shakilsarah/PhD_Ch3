@@ -13,10 +13,7 @@ list=rm(list=ls(all=TRUE))
 
 ## Set working directory
 
-# MAC: wd <- "~/Dropbox/"
-
-# PC: 
-wd <- "D:/Users/sarah/Dropbox/"
+df <- "Data/"
 
 # load libraries
 library(dplyr)
@@ -37,9 +34,7 @@ lengthnona <- function(x) {
 ##### ========== (1) DATA PREP ==========================================================================
 
 ## (1.1) Read in OC yields, PO13C, and POCTSSrat ====================
-df <- "ThesisDrafts/Chapter3/Data/" 
-
-d <- read.csv(paste0(wd, df, "2017data.csv"))
+d <- read.csv(paste0(df, "2017data.csv"))
 
 d <- d %>%
   select(campaign, site, date, D50, psand, tssmgL,
@@ -58,7 +53,7 @@ d <- d %>%
 d$date <- as.character(as.Date(d$date))
 
 ## (1.2) Read in transect distances ====================
-dista <- read_excel(paste0(wd, df, "20162017POCPO14CTrans.xlsx"))
+dista <- read_excel(paste0(df, "20162017POCPO14CTrans.xlsx"))
 dista$`Sampling Date` <- as.character(as.Date(dista$`Sampling Date`))
 dist <- dista %>%
         filter(`Sample Type`=="Sample" & !(`Stream Location`=="PERI")) %>%
@@ -101,7 +96,7 @@ do14c <- dista %>%
   ungroup
 
 ## (1.3) Read in OC optics ====================
-o <- read.csv(paste0(wd, df, "masteroptics2.csv"))
+o <- read.csv(paste0(df, "masteroptics2.csv"))
 o <- o %>%
      select(site, date, JDay, prcntC1_p, prcntC3_p, prcntC2_p, prcntC4_p, prcntC5_p,
             SR_d, SUVA254, slumpYN)
@@ -110,7 +105,7 @@ o$date <- as.character(as.Date(o$date))
 
 ## (1.4) Distance from nearest active slump ====================
 
-sdist <- read_excel(paste0(wd, df, "slumpstreamdist.xlsx"))
+sdist <- read_excel(paste0(df, "slumpstreamdist.xlsx"))
 
 ## (1.5) Merge together ====================
 
@@ -132,8 +127,7 @@ a <- a %>% filter(campaign=="2017transect" | site==3) %>%
   select(-D50, -psand, -note)
 
 ## (1.7) Read in slump UP and DN from Chapter 1 ====================
-dfch1 <- "ThesisDrafts/Chapter1/Writing/Database/filestosubmit/"
-c1 <- read.csv(paste0(wd, dfch1, "PeelPlateau_RTSandstream_geochem.csv"))
+c1 <- read.csv(paste0(df, "PeelPlateau_RTSandstream_geochem.csv"))
 
 cav <- c1 %>% 
        filter(sampletype=="Stream" & 
@@ -473,8 +467,7 @@ comp2b <- ggplot() +
   theme + theme(legend.position="none")
 
 ## (2.4.9) C14 (c14) ======
-dfc14 <- "ThesisDrafts/Chapter3/Data/"
-docsed14c <- read_excel(paste0(wd, dfc14, "PO14C.xlsx"))
+docsed14c <- read_excel(paste0(df, "PO14C.xlsx"))
 
 doc14c <- docsed14c %>%
           filter(MatCode=="DOC" & `Slump Site`=="SC Outlet")
@@ -569,7 +562,7 @@ rain <- ggplot() +
 library(grid)
 
 savePlotpdf <- function(myPlot, w, h, filename) {
-  pdf(file = paste0(wd, "ThesisDrafts/Chapter3/Graphs/Fig3new/", filename, ".pdf"),
+  pdf(file = paste0("Figures/", filename, ".pdf"),
       width = w, height = h)
   print(myPlot)
   dev.off()

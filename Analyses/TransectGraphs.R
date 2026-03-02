@@ -13,10 +13,7 @@ list=rm(list=ls(all=TRUE))
 
 ## Set working directory
 
-# MAC: wd <- "~/Dropbox/"
-
-# PC: 
-wd <- "D:/Users/sarah/Dropbox/"
+df <- "Data/"
 
 # load libraries
 library(dplyr)
@@ -36,7 +33,7 @@ lengthnona <- function(x) {
 
 # load functions
 savePlotpdf <- function(myPlot) {
-  pdf(file = paste0(wd, printfolder, name),
+  pdf(file = paste0("Figures/", name),
       width = w, height = h)
   print(myPlot)
   dev.off()
@@ -52,13 +49,10 @@ cbbPalette<-c("#000000","#E69F00","#56B4E9","#009E73","#F0E442","#0072B2","#D55E
 
 ##### ========== (1) DATA PREP =========================================================================
 
-# (1.1) Data folder
-datafolder <- "Thesisdrafts/Chapter3/Data/"
-
 # (1.2) 2015 Transect
 
 #(1.2.1) POC, Q
-trans2015 <- read_excel(paste0(wd, datafolder, "2015Transects.xlsx"))
+trans2015 <- read_excel(paste0(df, "2015Transects.xlsx"))
 trans2015$POCflux <- trans2015$POCmgL*trans2015$Qm3s*1000
 
 cols.num <- c("POCmgL", "Qm3s", "POCflux", "Temp", "Cond")
@@ -66,13 +60,13 @@ trans2015[cols.num] <- sapply(trans2015[cols.num],as.numeric)
 sapply(trans2015, class)
 
 #(1.2.2) 13C
-c13 <- read_excel(paste0(wd, datafolder, "2015_POC_Amount_13C.xlsx"))
+c13 <- read_excel(paste0(df, "2015_POC_Amount_13C.xlsx"))
 c13 <- c13[c13$`Multiple Analysis Number`==1, 
            c("Slump Site", "Stream Location", "Transect Location",
              "Sampling Date", "Sample Type", "d13C")]
 
 #(1.2.3) TSS for percPOC
-pc <- read_excel(paste0(wd, datafolder, "2015_POC_TSS.xlsx"))
+pc <- read_excel(paste0(df, "2015_POC_TSS.xlsx"))
 pc$TSSmgL <- (pc$`Filter Post-weight (mg)`-pc$`Filter Pre-weight (mg)`)/pc$`Filtered Volume (L)`
 pc <- pc[,c("Slump Site", "Stream Location", "Transect Location",
             "Sampling Date", "Sample Type", "TSSmgL")]
@@ -105,7 +99,7 @@ translong$`Stream Location` <- as.factor(translong$`Stream Location`)
 #translongm$type <- as.factor(as.character(translongm$type))
 
 # (1.3) 2016 Transect
-data.all <- read_excel(paste0(wd, datafolder, "20162017POCPO14CTrans.xlsx"))
+data.all <- read_excel(paste0(df, "20162017POCPO14CTrans.xlsx"))
 data.all$distkm <- data.all$distm/1000
 data.samples <- data.all[data.all$`Sample Type`=="Sample",]
 
@@ -284,7 +278,6 @@ library(gridExtra)
 ### (3.2) Graphs and dimensions =====
 SE <- ggplotGrob(SE)
 SD <- ggplotGrob(SD)
-printfolder <- "Thesisdrafts/Chapter3/Graphs/Fig2/Routput/"
 
 ### (3.3) Print panel graphs =====
 w = 4; h=11

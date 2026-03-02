@@ -13,10 +13,7 @@ list=rm(list=ls(all=TRUE))
 
 ## Set working directory
 
-# MAC: wd <- "~/Dropbox/"
-
-# PC: 
-wd <- "D:/Users/sarah/Dropbox/"
+df <- "Data/"
 
 # load libraries
 library(dplyr)
@@ -37,17 +34,16 @@ lengthnona <- function(x) {
 
 ## Call book code with necessary functions 
 # (e.g. pairs function; Zuur 2009, Mixed Effects Models and Extensions)
-source(paste0(wd,"ThesisDrafts/Statistics/MixedEffectsModels/HighstatLibV10.R"))
+source("functions/HighstatLibV10.R")
 
 ##### ========== (1) DATA PREP ==========================================================================
 
 # (1.1) 2017 streambank and merge ====================
 
 ### 13C =====
-df <- "ThesisDrafts/Chapter3/Data/"
-sed13c <- read_excel(paste0(wd,df, "Shakil_PeelHWSBPO13C.xlsx"))
+sed13c <- read_excel(paste0(df, "Shakil_PeelHWSBPO13C.xlsx"))
 
-sed13c <- read_excel(paste0(wd,df, "Sediment_PerPOC.xlsx"))
+sed13c <- read_excel(paste0(df, "Sediment_PerPOC.xlsx"))
 sed13c$cat <- "SB"
 sed13c$cat[sed13c$`Transect Location`=="PLE"] <- "PLE"
 sed13c$cat[sed13c$`Transect Location`=="HOL"] <- "HOL"
@@ -72,7 +68,7 @@ sed13c <- sed13c %>%
 
 ### %POC ====
 
-sedperpoc <- read_excel(paste0(wd,df, "Sediment_PerPOC.xlsx"))
+sedperpoc <- read_excel(paste0(df, "Sediment_PerPOC.xlsx"))
 sedperpoc$cat <- "SB"
 sedperpoc$cat[sedperpoc$`Transect Location`=="PLE"] <- "PLE"
 sedperpoc$cat[sedperpoc$`Transect Location`=="HOL"] <- "HOL"
@@ -96,8 +92,7 @@ sedperpoc <- sedperpoc %>%
          `Sample Type`, PercPOC)
 
 # (1.2) F14C of sed ====================
-df2 <- "ThesisDrafts/Chapter3/Data/"
-sed14c <- read_excel(paste0(wd, df2, "20162017POCPO14CTrans.xlsx"))
+sed14c <- read_excel(paste0(df, "20162017POCPO14CTrans.xlsx"))
 
 sed14c <- sed14c %>%
           filter(MatCode=="A") %>%
@@ -107,8 +102,7 @@ sed14c <- sed14c %>%
 sed14c$cat <- "SB"
           
 # (1.3) Ch1 headwall and peri samples ====================
-dfc1 <- "ThesisDrafts/Chapter1/Writing/Database/filestosubmit/"
-c1 <- read.csv(paste0(wd, dfc1, "PeelPlateau_RTSandstream_geochem.csv"))
+c1 <- read.csv(paste0(df, "PeelPlateau_RTSandstream_geochem.csv"))
 c1$PO13C[c1$endmembertype=="Periphyton"]
 c1$cat <- as.character(c1$headwallcat)
 c1$cat[c1$endmembertype=="Periphyton"] <- "PERI"
@@ -143,7 +137,7 @@ em <- merge(c1, sed,
                    "F14C_A", "F14Cerror_A"),
             all=TRUE)
 
-write.csv(em,paste0(wd, "ThesisDrafts/Chapter3/Graphs/endmembersummaryall.csv") )
+write.csv(em,paste0(df, "Figures/endmembersummaryall.csv") )
 ##### ========== (2) Calculate summaries ==========================================================================
 
 # (2.1) Avg, Sd, Range ====================
@@ -166,4 +160,4 @@ emsum <- em %>%
                 F14Crange=range(F14C_A, na.rm = TRUE)
        )
 
-write.csv(emsum, paste0(wd, "ThesisDrafts/Chapter3/Graphs/endmembersummary.csv"))
+write.csv(emsum, paste0(df, "Figures/endmembersummary.csv"))

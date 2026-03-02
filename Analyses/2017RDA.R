@@ -13,10 +13,7 @@ list=rm(list=ls(all=TRUE))
 
 ## Set working directory
 
-# MAC: wd <- "~/Dropbox/"
-
-# PC: 
-wd <- "D:/Users/sarah/Dropbox/"
+df <- "Data/"
 
 # load libraries
 library(dplyr)
@@ -36,17 +33,13 @@ lengthnona <- function(x) {
 }
 
 ## Call book code with necessary functions (e.g. pairs function; Zuur 2009, Mixed Effects Models and Extensions)
-source(paste0(wd,"ThesisDrafts/Statistics/MixedEffectsModels/HighstatLibV10.R"))
-
-# check rainfall ===
+source("functions/HighstatLibV10.R")
 
 
 ##### ========== (1) DATA PREP ==========================================================================
 
 ## (1.1) Read in file ====================
-df <- "ThesisDrafts/Chapter3/Data/" 
-
-d <- read.csv(paste0(wd, df, "2017data.csv"))
+d <- read.csv(paste0(df, "2017data.csv"))
 
 dall <- d
 
@@ -435,8 +428,7 @@ rdagraph <- ggplot(species_centroids, aes(x = RDA1, y= RDA2)) +
 # need to have separate values for UP, IN, DN, sub-catchments, and transects
 
 ## (4.1) Read in chapter 1 values =====
-dfc1 <- "ThesisDrafts/Chapter1/Writing/Database/filestosubmit/"
-c1 <- read.csv(paste0(wd, dfc1, "PeelPlateau_RTSandstream_geochem.csv"))
+c1 <- read.csv(paste0(df, "PeelPlateau_RTSandstream_geochem.csv"))
 
 c1 <- c1 %>%
   filter(sampletype=="Stream" & streamlocation!="IN") %>%
@@ -569,22 +561,22 @@ g1 <- ggplotGrob(rdagraph)
 
 grid.draw(g1)
 
-savePlotpdf <- function(myPlot, wd, df, filename, w, h) {
-  pdf(file = paste0(wd, df, filename),
+savePlotpdf <- function(myPlot, df, filename, w, h) {
+  pdf(file = paste0(df, filename),
       width = w, height = h)
   print(myPlot)
   dev.off()
 }
 
-dfg <- "ThesisDrafts/Chapter3/Graphs/Fig3/"
+dfg <- "Figures/"
 filename <- "rdaocyield.pdf"
-savePlotpdf(grid.draw(g1), wd, dfg, filename, 4, 4)
+savePlotpdf(grid.draw(g1), dfg, filename, 4, 4)
 
 
 ## (6.2) %POC and TOC yield graph across scales ======
 
-savePlotpdf(grid.draw(ggplotGrob(perpoc)), wd, dfg, "perpoc.pdf", 3.5, 3.5)
-savePlotpdf(grid.draw(ggplotGrob(toc)), wd, dfg, "toc.pdf", 4, 4)
+savePlotpdf(grid.draw(ggplotGrob(perpoc)), dfg, "perpoc.pdf", 3.5, 3.5)
+savePlotpdf(grid.draw(ggplotGrob(toc)), dfg, "toc.pdf", 4, 4)
 
 # run a prediction
 

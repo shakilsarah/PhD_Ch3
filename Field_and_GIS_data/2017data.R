@@ -33,7 +33,7 @@ lengthnona <- function(x) {
 }
 
 ## Call book code with necessary functions (e.g. pairs function; Zuur 2009, Mixed Effects Models and Extensions)
-source(paste0(wd,"ThesisDrafts/Statistics/MixedEffectsModels/HighstatLibV10.R"))
+source("functions/HighstatLibV10.R")
 
 ##### ========== (1) DATA PREP ==========================================================================
 

@@ -13,10 +13,7 @@ list=rm(list=ls(all=TRUE))
 
 ## Set working directory
 
-# MAC: wd <- "~/Dropbox/"
-
-# PC: 
-wd <- "D:/Users/sarah/Dropbox/"
+df <- "Data/"
 
 # load libraries
 library(dplyr)
@@ -36,14 +33,13 @@ lengthnona <- function(x) {
 }
 
 ## Call book code with necessary functions (e.g. pairs function; Zuur 2009, Mixed Effects Models and Extensions)
-source(paste0(wd,"ThesisDrafts/Statistics/MixedEffectsModels/HighstatLibV10.R"))
+source("functions/HighstatLibV10.R")
 
 ##### ========== (1) DATA PREP ==========================================================================
 
 ## (1.1) Read in file ====================
-df <- "ThesisDrafts/Chapter3/Data/" 
 
-d <- read.csv(paste0(wd, df, "2017data.csv"))
+d <- read.csv(paste0(df, "2017data.csv"))
 
 d <- d %>% select(site, date, campaign, loc, trans, tssmgL, POCmgL, DOCmgL, tssyield,
                   pocyield, tocyield, docyield,
@@ -73,7 +69,7 @@ d <- d %>% select(site, date, campaign, loc, trans, tssmgL, POCmgL, DOCmgL, tssy
                   POCTSSrat,
                   FemgL)
 
-o <- read.csv(paste0(wd, df, "masteroptics.csv"))
+o <- read.csv(paste0(df, "masteroptics.csv"))
 
 o <- o %>% filter(o$samptype=="Sample")
 
@@ -112,7 +108,7 @@ d$slumpYN[d$site==29] <- "N"
 
 ## (1.7) Write for other plotting ====================
 
-write.csv(d, paste0(wd, df, "masteroptics2.csv"))
+write.csv(d, paste0(df, "masteroptics2.csv"))
 
 ## (1.8) Fix site codes for RDA plotting ====================
 
@@ -563,7 +559,7 @@ library(grid)
 
 
 savePlotpdf <- function(myPlot) {
-  pdf(file = paste0(wd, "ThesisDrafts/Chapter3/Graphs/Fig3/", filename, ".pdf"),
+  pdf(file = paste0("Figures/", filename, ".pdf"),
       width = 4, height = 4)
   print(myPlot)
   dev.off()

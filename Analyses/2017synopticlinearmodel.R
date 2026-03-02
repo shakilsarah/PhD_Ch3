@@ -13,10 +13,7 @@ list=rm(list=ls(all=TRUE))
 
 ## Set working directory
 
-# MAC: wd <- "~/Dropbox/"
-
-# PC: 
-wd <- "D:/Users/sarah/Dropbox/"
+df <- "Data/"
 
 # load libraries
 library(dplyr)
@@ -36,14 +33,12 @@ lengthnona <- function(x) {
 }
 
 ## Call book code with necessary functions (e.g. pairs function; Zuur 2009, Mixed Effects Models and Extensions)
-source(paste0(wd,"ThesisDrafts/Statistics/MixedEffectsModels/HighstatLibV10.R"))
+source("functions/HighstatLibV10.R")
 
 ##### ========== (1) DATA PREP ==========================================================================
 
 ## (1.1) Read in file ====================
-df <- "ThesisDrafts/Chapter3/Data/" 
-
-d <- read.csv(paste0(wd, df, "synopticflux.csv"))
+d <- read.csv(paste0(df, "synopticflux.csv"))
 
 d$wateryield <- (d$dism3s*1000)/d$WatershedArea
 
