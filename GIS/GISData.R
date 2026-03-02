@@ -13,10 +13,7 @@ list=rm(list=ls(all=TRUE))
 
 ## Set working directory
 
-# MAC: wd <- "~/Dropbox/"
-
-# PC: 
-wd <- "D:/Users/sarah/Dropbox/"
+df <- "Data/"
 
 # load libraries
 library(dplyr)
@@ -37,11 +34,10 @@ lengthnona <- function(x) {
 ##### ========== (1) DATA PREP =========================================================================
 
 # (1.1) Watershed area file ==========
-df <- "ThesisDrafts/Chapter3/Data/"
-wa <- read_excel(paste0(wd, df, "watershedareas.xlsx"), sheet="watershedareasforR")
+wa <- read_excel(paste0(df, "watershedareas.xlsx"), sheet="watershedareasforR")
 
 # (1.2) Watershed bedrock geology ==========
-bgeo <- read.csv(paste0(wd, df, "watershedbedgeol.csv"))
+bgeo <- read.csv(paste0(df, "watershedbedgeol.csv"))
 bgeo$shale <- NA
 bgeo$shale[bgeo$Lithology1=="Shale" | 
             bgeo$Lithology2=="Shale" |
@@ -64,7 +60,7 @@ bgeo <- bgeo %>%
 watmaster <- merge(wa, bgeo, by="Name")
 
 # (1.3) Watershed surficial geology ==========
-sgeo <- read.csv(paste0(wd, df, "surficialgeolareacote.csv"))
+sgeo <- read.csv(paste0(df, "surficialgeolareacote.csv"))
 sgeo <- sgeo %>% select(geoltype=Name, Name=Name_1, polygonareakm2)
 sgeowat <- sgeo %>%
             group_by(Name) %>%
@@ -87,7 +83,7 @@ sgeo <- sgeo %>%
 watmaster <- merge(watmaster, sgeo, by="Name")
 
 # (1.4) Watershed nhnmodified lake area km2 ==========
-wlake <- read.csv(paste0(wd, df, "watershedlakearea_updated20210726.csv"))
+wlake <- read.csv(paste0(df, "watershedlakearea_updated20210726.csv"))
 
 wlakewat <- wlake %>%
   select (Name, polygonareakm2) %>%
@@ -111,14 +107,12 @@ watmaster <- merge(watmaster, wlake, by="Name", all.x=TRUE)
 watmaster$lakeperc[is.na(watmaster$lakeperc)] <- 0
 
 # (1.5) Watershed GPP mean ==========
-# download from Gdrive
-df2 <- "ThesisDrafts/Chapter3/Data/Chapter3GIS/"
 
-#wgppmean1 <- read.csv(paste0(wd, df2, "ShedsGPPmean_20170712_2.csv"))
+#wgppmean1 <- read.csv(paste0(df, "ShedsGPPmean_20170712_2.csv"))
 #wgppmean1 <- wgppmean1 %>% select(Name, mean20170712=mean)
-#wgppmean2 <- read.csv(paste0(wd, df2, "ShedsGPPmean_20170720_2.csv"))
+#wgppmean2 <- read.csv(paste0(df, "ShedsGPPmean_20170720_2.csv"))
 #wgppmean2 <- wgppmean2 %>% select(Name, mean20170720=mean)
-#wgppmean3 <- read.csv(paste0(wd, df2, "ShedsGPPmean_20170805_2.csv"))
+#wgppmean3 <- read.csv(paste0(df, "ShedsGPPmean_20170805_2.csv"))
 #wgppmean3 <- wgppmean3 %>% select(Name, mean20170805=mean)
 
 #wgpp <- merge(wgppmean1, wgppmean2, by="Name")
@@ -129,17 +123,17 @@ df2 <- "ThesisDrafts/Chapter3/Data/Chapter3GIS/"
 #wgpp$mean20170805scaled <- wgpp$mean20170805*0.0001
 
 #wgppmeancalc <- wgpp %>%
- # select(Name, mean20170712scaled, 
- #       mean20170720scaled, mean20170805scaled) %>%
-  #pivot_longer(cols=c(mean20170712scaled, 
-   #                   mean20170720scaled,
-    #                  mean20170805scaled),
-     #          names_to="gpp8d_date",
-      #         values_to="gpp8d") %>%
+# select(Name, mean20170712scaled, 
+#       mean20170720scaled, mean20170805scaled) %>%
+#pivot_longer(cols=c(mean20170712scaled, 
+#                   mean20170720scaled,
+#                  mean20170805scaled),
+#          names_to="gpp8d_date",
+#         values_to="gpp8d") %>%
 #  group_by(Name) %>%
- # summarize(mean8dgpp = mean(gpp8d))
+# summarize(mean8dgpp = mean(gpp8d))
 
-wgppmean <- read.csv(paste0(wd, df2, 
+wgppmean <- read.csv(paste0(df, 
                             "ShedsGPPmean_stackedsum20170704to20170813.csv"))
 wgppmean$scaledgpp <- wgppmean$mean*0.0001
 
@@ -147,7 +141,7 @@ wgppmean$scaledgpp <- wgppmean$mean*0.0001
 watmaster <- merge(watmaster, wgppmean, by="Name")
 
 # (1.6) Watershed NPP mean ==========
-wnppmean <- read.csv(paste0(wd, df2, "ShedsannualNPPmean_2017.csv"))
+wnppmean <- read.csv(paste0(df, "ShedsannualNPPmean_2017.csv"))
 wnppmean$scalednpp <- wnppmean$mean*0.0001
 
 # merge with master file
@@ -155,7 +149,7 @@ watmaster <- merge(watmaster, wnppmean, by="Name")
 
 # (1.7) Watershed elevation ==========
 
-wele <- read.csv(paste0(wd, df, "meanwatershedelevation.csv"))
+wele <- read.csv(paste0(df, "meanwatershedelevation.csv"))
 wele <- wele %>% select(Name, meanelev_m=MEAN)
 
 # merge with master file
@@ -163,7 +157,7 @@ watmaster <- merge(watmaster, wele, by="Name")
 
 # (1.8) Watershed slope ==========
 
-wslope <- read.csv(paste0(wd, df, "meanwatershedslopes.csv"))
+wslope <- read.csv(paste0(df, "meanwatershedslopes.csv"))
 wslope <- wslope %>% select(Name, meanslope_deg=MEAN)
 
 # merge with master file
@@ -171,8 +165,8 @@ watmaster <- merge(watmaster, wslope, by="Name")
 
 # (1.9) Land cover ==========
 
-wslc <- read.csv(paste0(wd, df, "watershedlandcovernolakes.csv"))
-wslc_legend <- read_excel(paste0(wd, df, "LandCoverCircaCode.xlsx"), sheet="2015")
+wslc <- read.csv(paste0(df, "watershedlandcovernolakes.csv"))
+wslc_legend <- read_excel(paste0(df, "LandCoverCircaCode.xlsx"), sheet="2015")
 wslc$gridcode[wslc$FID_canlc2015_nolakes_nad83zn8==-1] <- NA
 wslc <- wslc %>% select(Name, gridcode, polygonareakm2)
 wslc <- merge(wslc, wslc_legend, by="gridcode", all.x=TRUE)
@@ -207,7 +201,7 @@ watmaster <- merge(watmaster, wslc, by="Name")
 # (1.10) Slump percentages ==========
 
 # (1.10.1) 2016 Slump percentages ==========
-slumps2016 <- read.csv(paste0(wd, df, 
+slumps2016 <- read.csv(paste0(df, 
                    "peelslumps2016_union_ch3archydrowatersheds20210616_clip.csv"))
 
 
@@ -232,14 +226,14 @@ slumps2016$percslump2016 <- (slumps2016$sumslump16/slumps2016$sumwatarea)*100
 watmaster <- merge(watmaster, slumps2016, by="Name", all.x=TRUE)
 
 # (1.10.1) 2017 Slump percentages ==========
-slumps17old <- read.csv(paste0(wd, df, 
+slumps17old <- read.csv(paste0(df, 
                               "rtsdelineationsstony_union_watersheds2021061.csv"))
 
 
-slumps17act <- read.csv(paste0(wd, df, 
+slumps17act <- read.csv(paste0(df, 
                               "rtsdelineationsstonysarahaddCB_union_watersheds2021061.csv"))
 
-slumps17all <- read.csv(paste0(wd, df, 
+slumps17all <- read.csv(paste0(df, 
                                "allslumpsclippedtowatershed_union_watersheds2021061.csv"))
 
 # slumps 2017 old =====
@@ -312,7 +306,7 @@ watmaster <- merge(watmaster, slumps17all, by="Name", all.x=TRUE)
 
 # (1.11) Watercourse slump accumulations ==========
 
-slumpacc <- read.csv(paste0(wd, df, "watercourseacccountslumpjk_union_watersheds2021061.csv"))
+slumpacc <- read.csv(paste0(df, "watercourseacccountslumpjk_union_watersheds2021061.csv"))
 
 # acc = strahler type stream order for slumping, acc_count=cumulative # of slumps
 slumpacc <- slumpacc%>%
@@ -338,7 +332,7 @@ watmaster$slumpacccount[watmaster$year==2017 &
 
 
 # (1.12) 100 cm organic carbon stocks ==========
-oc <- read.csv(paste0(wd, df, "NCSCDv2Canada_int_watersheds2021061.csv"))
+oc <- read.csv(paste0(df, "NCSCDv2Canada_int_watersheds2021061.csv"))
 
 oc <- oc %>%
   select(Name, Shape_Area, SOCC_100CM)
@@ -363,7 +357,7 @@ watmaster <- merge(watmaster, oc, all=TRUE)
 
 # (1.13) Distance from western glacial limit ==========
 
-gl <- read.csv(paste0(wd, df, "distfromglaciallimit.csv"))
+gl <- read.csv(paste0(df, "distfromglaciallimit.csv"))
 
 gl$NEAR_DIST[gl$site==1] <- gl$NEAR_DIST[gl$site==1]*-1
 gl$NEAR_DIST[gl$site==45] <- gl$NEAR_DIST[gl$site==45]*-1
@@ -396,7 +390,7 @@ watmaster <- watmaster[!(watmaster$site==27 & is.na(watmaster$Name)),]
 
 # (1.14) Terrain roughness ==========
 
-rough <-  read.csv(paste0(wd, df, "watersheds2021061roughness_zonalstatistics.csv"))
+rough <-  read.csv(paste0(df, "watersheds2021061roughness_zonalstatistics.csv"))
 
 rough <- rough %>% select(Name, meanrough=MEAN)
 
@@ -411,7 +405,7 @@ watmaster$meanelev_m[watmaster$site==10] <- 449.828126537548
 watmaster$meanslope_deg[watmaster$site==10] <- 5.64077872296588
 
 #SOC site 10 revised =====
-oc <- read.csv(paste0(wd, df, "NCSCDv2Canada_int_revisedsite10wpoly.csv"))
+oc <- read.csv(paste0(df, "NCSCDv2Canada_int_revisedsite10wpoly.csv"))
 
 oc <- oc %>%
   select(Shape_Area, SOCC_100CM)
@@ -432,7 +426,7 @@ watmaster$wmeanSOCC_100CM[watmaster$site==10] <- oc$wmeanSOCC_100CM
 
 #slumpacccount site 10 revised ======
 
-slumpacc <- read.csv(paste0(wd, df, "watercourseacccountslumpjk_union_revisedsite10wpoly.csv"))
+slumpacc <- read.csv(paste0(df, "watercourseacccountslumpjk_union_revisedsite10wpoly.csv"))
 
 # acc = strahler type stream order for slumping, acc_count=cumulative # of slumps
 slumpacc <- slumpacc%>%
@@ -448,7 +442,7 @@ watmaster$strahlerstream[watmaster$site==10] <- slumpacc$strahlerstream
 
 # slumps 2017active site 10 revised ===== 
 
-slumps17act <- read.csv(paste0(wd, df, 
+slumps17act <- read.csv(paste0(df, 
                                "rtsdelineationsstonysarahaddCB_union_revisedsite10wpoly_clip.csv"))
 
 slumpsum17act <- slumps17act %>%
@@ -468,7 +462,7 @@ watmaster$percslump17act[watmaster$site==10] <- slumps17$percslump17act
 
 # slumps2017all site 10 revised =====
 
-slumps17all <- read.csv(paste0(wd, df, 
+slumps17all <- read.csv(paste0(df, 
                                "allslumpsclippedtowatershed_union_revisedsite10wpoly_clip.csv"))
 slumpsum17all <- slumps17all %>%
   select(FID_allslumpsclippedtowatershed, Shape_Area)%>%
@@ -487,8 +481,8 @@ watmaster$percslump17all[watmaster$site==10] <- slumps17$percslump17all
 
 # landcover site 10 revised =====
 
-wslc <- read.csv(paste0(wd, df, "canlc2015nolakesclip_union_revsites10.csv"))
-wslc_legend <- read_excel(paste0(wd, df, "LandCoverCircaCode.xlsx"), sheet="2015")
+wslc <- read.csv(paste0(df, "canlc2015nolakesclip_union_revsites10.csv"))
+wslc_legend <- read_excel(paste0(df, "LandCoverCircaCode.xlsx"), sheet="2015")
 wslc$gridcode[wslc$FID_canlc2015_nolakes_nad83zn8==-1] <- NA
 wslc <- wslc %>% select(gridcode, Shape_Area)
 wslc <- merge(wslc, wslc_legend, by="gridcode", all.x=TRUE)
@@ -526,7 +520,7 @@ watmaster$water[watmaster$site==10] <- wslc$water
 watmaster$wetland[watmaster$site==10] <- wslc$wetland
 
 # Watershed bedrock geology site 10 revised ==========
-bgeo <- read.csv(paste0(wd, df, "watershedbedgeol_nad83zn8_revsite10.csv"))
+bgeo <- read.csv(paste0(df, "watershedbedgeol_nad83zn8_revsite10.csv"))
 bgeo$shale <- NA
 bgeo$shale[bgeo$Lithology1=="Shale" | 
              bgeo$Lithology2=="Shale" |
@@ -548,7 +542,7 @@ bgeo <- bgeo %>%
 watmaster$percshale[watmaster$site==10] <- bgeo$percshale
 
 # Watershed surficial geology site 10 revised ==========
-sgeo <- read.csv(paste0(wd, df, "watershedgeol_nad83zn8_revsite10.csv"))
+sgeo <- read.csv(paste0(df, "watershedgeol_nad83zn8_revsite10.csv"))
 sgeo <- sgeo %>% select(geoltype=Name, Shape_Area)
 sgeowat <- sgeo %>%
   summarise (sumwatarea = sum(Shape_Area))
@@ -573,7 +567,7 @@ watmaster$Piedmont[watmaster$site==10] <- sgeo$Piedmont
 
 # Watershed NHN lake site 10 revised ==========
 
-wlake <- read.csv(paste0(wd, df, "NHNLakes_union_revsite10.csv"))
+wlake <- read.csv(paste0(df, "NHNLakes_union_revsite10.csv"))
 
 wlakewat <- wlake %>%
   select (Shape_Area) %>%
@@ -639,13 +633,4 @@ pairs(watmaster[,12:ncol(watmaster)])
 # consider just removing land cover...
 
 # print watmaster
-write.csv(watmaster, paste0(wd, df, "watmaster.csv"))
-
-#wslc$barrenland_perc <- (wslc$`barren land`/wslc$sumwatarea)*100
-#wslc$forest_perc <- (wslc$forest/wslc$sumwatarea)*100
-#wslc$grassland_perc <- (wslc$grassland/wslc$sumwatarea)*100
-#wslc$lichenmoss_perc <- (wslc$`lichen/moss`/wslc$sumwatarea)*100
-#wslc$shrubland_perc <- (wslc$shrubland/wslc$sumwatarea)*100
-#wslc$water_perc <- (wslc$water/wslc$sumwatarea)*100
-#wslc$urbanandbuiltup_perc <- (wslc$`urban and built-up`/wslc$sumwatarea)*100
-#wslc$wetland_perc <- (wslc$wetland/wslc$sumwatarea)*100
+write.csv(watmaster, paste0(df, "watmaster.csv"))
