@@ -70,21 +70,17 @@ trans <- merge(a, pc, all.x=TRUE)
 trans <- trans[trans$`Sample Type`=="Sample",]
 trans$`Sample Type` <- NULL
 
-#(1.2.5) New calcs (percPOC)
+
+#(1.2.5) Calculate %POC
 trans$percPOC <- trans$POCmgL / trans$TSSmgL
 
+# (1.2.6) Pivot longer
 translong <- trans %>%
-  pivot_longer(cols=c("percPOC", "d13C", "POCmgL", "POCyieldmgLkm2"),
+  pivot_longer(cols=c("percPOC", "d13C", "POCmgL", "POCflux", "POCyieldmgLkm2"),
                names_to="type", values_to = "value")
 
 translong$`Sampling Date` <- as.character(translong$`Sampling Date`)
 translong$`Stream Location` <- as.factor(translong$`Stream Location`)
-
-# (1.3) 2016 Transect
-data.all <- read_excel(paste0(df, "20162017POCPO14CTrans.xlsx"))
-data.all$distkm <- data.all$distm / 1000
-data.samples <- data.all[data.all$`Sample Type`=="Sample",]
-
 
 ##### ========== (2) 2015 Transect Graphing =================================================
 
@@ -105,6 +101,7 @@ pub_theme <- theme_bw(base_size = 12, base_family = "sans") +
   )
 
 # 2.2 Fix the Legend Dates
+# This restores the missing Sampling_Period column!
 translong <- translong %>%
   mutate(Sampling_Period = case_when(
     `Sampling Date` %in% c("2015-07-04", "2015-07-06") ~ "JUL-4 / JUL-6",
@@ -113,6 +110,10 @@ translong <- translong %>%
   )) %>%
   mutate(Sampling_Period = factor(Sampling_Period, 
                                   levels = c("JUL-4 / JUL-6", "JUL-21 / JUL-22", "AUG-16 / AUG-21")))
+
+# Also update your factor levels right above your graphing section:
+translong$type <- factor(translong$type, 
+                         levels=c("percPOC", "d13C", "POCmgL", "POCflux", "POCyieldmgLkm2"))
 
 # 2.3 Create Shared Plot Layers 
 base_layers <- list(
@@ -154,7 +155,7 @@ p2_SE <- ggplot(translong %>% filter(type == "d13C", `Slump Site` == "SE"),
 # --- ROW 3: POC mg L-1 (WITH LOG SCALE) ---
 p3_SD <- ggplot(translong %>% filter(type == "POCmgL", `Slump Site` == "SD"),
                 aes(x = distm, y = value, fill = Sampling_Period, shape = `Stream Location`)) +
-  base_layers + no_x_axis + scale_y_log10() + ylab(expression("POC mg L"^-1)) +
+  base_layers + no_x_axis + scale_y_log10() + ylab(expression("POC (mg L"^-1*")")) +
   annotate("text", x = -Inf, y = Inf, label = "(e)", hjust = 0, vjust = -0.8, size = 5)
 
 p3_SE <- ggplot(translong %>% filter(type == "POCmgL", `Slump Site` == "SE"),
@@ -162,32 +163,51 @@ p3_SE <- ggplot(translong %>% filter(type == "POCmgL", `Slump Site` == "SE"),
   base_layers + no_x_axis + scale_y_log10() + ylab(NULL) +
   annotate("text", x = -Inf, y = Inf, label = "(f)", hjust = 0, vjust = -0.8, size = 5)
 
-# --- ROW 4: POC yield ---
-p4_SD <- ggplot(translong %>% filter(type == "POCyieldmgLkm2", `Slump Site` == "SD"),
+# --- ROW 4: POC flux ---
+p4_SD <- ggplot(translong %>% filter(type == "POCflux", `Slump Site` == "SD"),
                 aes(x = distm, y = value, fill = Sampling_Period, shape = `Stream Location`)) +
-  base_layers + xlab("Distance (m)") + ylab(expression("POC yield mg s"^-1*"km"^-2)) +
+  base_layers + no_x_axis + ylab(expression("POC flux mg s"^-1)) +
   annotate("text", x = -Inf, y = Inf, label = "(g)", hjust = 0, vjust = -0.8, size = 5)
 
-p4_SE <- ggplot(translong %>% filter(type == "POCyieldmgLkm2", `Slump Site` == "SE"),
+p4_SE <- ggplot(translong %>% filter(type == "POCflux", `Slump Site` == "SE"),
+                aes(x = distm, y = value, fill = Sampling_Period, shape = `Stream Location`)) +
+  base_layers + no_x_axis + ylab(NULL) +
+  annotate("text", x = -Inf, y = Inf, label = "(h)", hjust = 0, vjust = -0.8, size = 5)
+
+# --- ROW 5: POC yield ---
+p5_SD <- ggplot(translong %>% filter(type == "POCyieldmgLkm2", `Slump Site` == "SD"),
+                aes(x = distm, y = value, fill = Sampling_Period, shape = `Stream Location`)) +
+  base_layers + xlab("Distance (m)") + ylab(expression("POC yield mg s"^-1*"km"^-2)) +
+  annotate("text", x = -Inf, y = Inf, label = "(i)", hjust = 0, vjust = -0.8, size = 5)
+
+p5_SE <- ggplot(translong %>% filter(type == "POCyieldmgLkm2", `Slump Site` == "SE"),
                 aes(x = distm, y = value, fill = Sampling_Period, shape = `Stream Location`)) +
   base_layers + xlab("Distance (m)") + ylab(NULL) +
-  annotate("text", x = -Inf, y = Inf, label = "(h)", hjust = 0, vjust = -0.8, size = 5)
+  annotate("text", x = -Inf, y = Inf, label = "(j)", hjust = 0, vjust = -0.8, size = 5)
 
 ##### ========== (3) COMPILE AND SAVE ====================================================================
 
 if(!dir.exists("Figures")) dir.create("Figures")
+if(!dir.exists("Figures/Fig2")) dir.create("Figures/Fig2", recursive = TRUE)
 
-# Stitch the 8 plots together: evaluates Left -> Right, Top -> Bottom
+# Stitch the 10 plots together
 combined_plot <- (p1_SD | p1_SE) / 
   (p2_SD | p2_SE) / 
   (p3_SD | p3_SE) / 
-  (p4_SD | p4_SE) + 
+  (p4_SD | p4_SE) / 
+  (p5_SD | p5_SE) + 
   plot_layout(guides = "collect") & 
   theme(legend.position = "top",
         legend.box = "horizontal",
         legend.margin = margin(b = 10)) 
 
-# Save the final graphic
-ggsave(filename = "Figures/2015_Transect_Combined.pdf", 
+# Save PDF (Increased height from 11 to 13.5 to accommodate the extra row)
+ggsave(filename = "Figures/Fig2/2015_Transect_Combined.pdf", 
        plot = combined_plot, 
-       width = 8.5, height = 11, units = "in")
+       width = 8.5, height = 13.5, units = "in")
+
+# Save JPEG
+ggsave(filename = "Figures/Fig2/2015_Transect_Combined.jpg", 
+       plot = combined_plot, 
+       width = 8.5, height = 13.5, units = "in",
+       dpi = 300, bg = "white")
