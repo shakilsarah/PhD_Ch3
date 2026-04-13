@@ -5,9 +5,8 @@
 # Background: Stony Creek Transect plots and D50 vs watershed area plots
 # Last Updated: October 10 2021
 # Modified: Combined into a single publication-ready figure using patchwork, 
-#           added ggrepel for labels, fixed panel (a) legend, changed flux to yield,
-#           added shape legends and DOC/POC annotations to panels d and e,
-#           moved d legend to top horizontal, and added Fig3 folder check.
+#           added ggrepel for labels, fixed panel legends, changed flux to yield,
+#           unified shape shading/positioning for panel j, and moved panel k legend to top.
 #===========================================================================================================#
 
 ##### (i) Workspace PREP ==============================================================================
@@ -289,7 +288,6 @@ yield_doc <- ggplot() +
             aes(x=distm/1000, y=values), linetype=2) +
   scale_fill_manual(values=c("white", "grey"), labels=c("NO RTS", "RTS")) +
   scale_shape_manual(values=c("Concentration"=22, "Yield"=21)) +
-  # --- FIX 1: Set nrow = 1 so the legend lays out horizontally ---
   guides(
     shape = guide_legend(override.aes = list(fill = "grey", size = 4), order = 1, nrow = 1),
     fill = guide_legend(override.aes = list(shape = 22, size = 4), order = 2, nrow = 1)
@@ -299,7 +297,6 @@ yield_doc <- ggplot() +
   scalex+
   scale_y_continuous(sec.axis = sec_axis(~ . / 10, name=expression("Concentration mg L"^-1))) +
   theme +
-  # --- FIX 2: Move legend to the top of the plot and layout horizontally ---
   theme(
     legend.position = "top", 
     legend.justification = "center",
@@ -325,7 +322,7 @@ yield_poc <- ggplot() +
   scalex+
   scale_y_continuous(sec.axis = sec_axis(~ . / 10, name=expression("Concentration mg L"^-1))) +
   theme + 
-  theme(legend.position="none") + # Hide legend in POC since it's identical to DOC
+  theme(legend.position="none") + 
   paneltheme
 
 ## (2.4.5) %POC (comp1a) ======
@@ -425,14 +422,14 @@ c14 <- ggplot() +
   geom_line(data=a, 
             aes(x=distm/1000, y=F14C_poc), linetype=1) +
   geom_point(data=a, 
-             aes(x=distm/1000, y=F14C_poc, fill=slumpYN),
-             colour="black", size=4, shape=22) +
+             aes(x=distm/1000, y=F14C_poc, fill=slumpYN, shape="POC"),
+             colour="black", size=4) +
   geom_point(data=doc14c, 
-             aes(x=distm/1000, y=F14C),
-             colour="black", size=4, shape=23, fill="grey") +
+             aes(x=distm/1000, y=F14C, shape="DOC"),
+             colour="black", size=4, fill="grey") +
   geom_point(data=sed14c, 
-             aes(x=distm/1000, y=F14C),
-             colour="black", size=4, shape=24, fill="grey") +
+             aes(x=distm/1000, y=F14C, shape="streambank"),
+             colour="black", size=4, fill="grey") +
   geom_errorbar(data=a, 
                 aes(x=distm/1000, ymin=F14C_poc-F14Cerror_poc, 
                     ymax=F14C_poc+F14Cerror_poc)) +
@@ -444,9 +441,20 @@ c14 <- ggplot() +
                     ymax=F14C+`F14C error`)) +
   scale_fill_manual(values=c("white", "grey"),
                     labels=c("NO RTS", "RTS")) +
+  scale_shape_manual(values=c("DOC"=23, "POC"=22, "streambank"=24)) +
+  guides(
+    fill = "none",
+    shape = guide_legend(override.aes = list(fill = "grey", size = 4), title=NULL, nrow=1)
+  ) +
   labs(x="Distance (km)", y=expression("F"^14*"C")) +
   scalex +
-  theme+ theme(legend.position="none")
+  theme + 
+  theme(
+    legend.position = "top", 
+    legend.justification = "center",
+    legend.direction = "horizontal",
+    legend.key.size = unit(0.5, "cm")
+  )
 
 ## (2.4.9) C14 and P1 P3 correlation (cor) ======
 cor <- ggplot() + 
@@ -459,15 +467,25 @@ cor <- ggplot() +
              colour="black",
              size=4) +
   scale_fill_manual(values=c("white", "grey"),
-                    labels=c("NO RTS", "RTS"),
-                    guide = guide_legend(
-                      override.aes = list(shape = c(21,22)))) + 
+                    labels=c("NO RTS", "RTS")) + 
   scale_shape_manual(values = c(21, 22)) +
+  # --- FIX 1: Set guide layouts to horizontal rows ---
+  guides(
+    fill = guide_legend(override.aes = list(shape = c(21,22)), nrow = 1, order = 1),
+    shape = guide_legend(nrow = 1, order = 2, title=NULL)
+  ) +
   labs(y="% fluorescence", x=expression("F"^14*"C")) +
   scale_x_log10() + 
   scale_y_log10() +
   theme +
-  theme(legend.position=c(1,0), legend.justification=c(1,0))
+  # --- FIX 2: Move legend to the top of the plot and layout horizontally ---
+  theme(
+    legend.position = "top",
+    legend.justification = "center",
+    legend.direction = "horizontal",
+    legend.box = "horizontal",
+    legend.key.size = unit(0.5, "cm")
+  )
 
 ## (2.4.10) Rainfall ======
 
@@ -513,7 +531,7 @@ final_figure <- rain /
                   tag_suffix = ')') & 
   theme(plot.tag = element_text(size = 14))
 
-# --- FIX 3: Check for/Create the nested Fig3 directory before saving ---
+# Check for/Create the nested Fig3 directory before saving
 if(!dir.exists("Figures")) {
   dir.create("Figures")
 }
