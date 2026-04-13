@@ -4,6 +4,10 @@
 # Contact: shakil@ualberta.ca
 # Background: Stony Creek Transect plots and D50 vs watershed area plots
 # Last Updated: October 10 2021
+# Modified: Combined into a single publication-ready figure using patchwork, 
+#           added ggrepel for labels, fixed panel (a) legend, changed flux to yield,
+#           added shape legends and DOC/POC annotations to panels d and e,
+#           moved d legend to top horizontal, and added Fig3 folder check.
 #===========================================================================================================#
 
 ##### (i) Workspace PREP ==============================================================================
@@ -12,7 +16,6 @@
 list=rm(list=ls(all=TRUE))
 
 ## Set working directory
-
 df <- "Data/"
 
 # load libraries
@@ -20,6 +23,8 @@ library(dplyr)
 library(ggplot2)
 library(readxl)
 library(tidyr)
+library(patchwork) # For combining ggplots into a single figure
+library(ggrepel)   # Added to prevent overlapping text labels
 
 # load functions
 se <- function(x) {
@@ -56,15 +61,15 @@ d$date <- as.character(as.Date(d$date))
 dista <- read_excel(paste0(df, "20162017POCPO14CTrans.xlsx"))
 dista$`Sampling Date` <- as.character(as.Date(dista$`Sampling Date`))
 dist <- dista %>%
-        filter(`Sample Type`=="Sample" & !(`Stream Location`=="PERI")) %>%
-        select(site = `Slump Site`,
-               loc = `Stream Location`,
-               trans = `Transect Location`,
-               date = `Sampling Date`,
-               distm) %>%
-        group_by(site, loc, trans, date) %>%
-        summarize(distm=mean(distm, na.rm=TRUE)) %>%
-        ungroup
+  filter(`Sample Type`=="Sample" & !(`Stream Location`=="PERI")) %>%
+  select(site = `Slump Site`,
+         loc = `Stream Location`,
+         trans = `Transect Location`,
+         date = `Sampling Date`,
+         distm) %>%
+  group_by(site, loc, trans, date) %>%
+  summarize(distm=mean(distm, na.rm=TRUE)) %>%
+  ungroup
 
 dist$distm[dist$site=="SC-2B"] <- 2858.267449
 
@@ -98,8 +103,8 @@ do14c <- dista %>%
 ## (1.3) Read in OC optics ====================
 o <- read.csv(paste0(df, "masteroptics2.csv"))
 o <- o %>%
-     select(site, date, JDay, prcntC1_p, prcntC3_p, prcntC2_p, prcntC4_p, prcntC5_p,
-            SR_d, SUVA254, slumpYN)
+  select(site, date, JDay, prcntC1_p, prcntC3_p, prcntC2_p, prcntC4_p, prcntC5_p,
+         SR_d, SUVA254, slumpYN)
 o$sum <- (o$prcntC1_p) + o$prcntC2_p + o$prcntC3_p + o$prcntC4_p
 o$date <- as.character(as.Date(o$date))
 
@@ -123,21 +128,21 @@ aarch <- a %>%
   select(-D50, -psand, -note)
 
 a <- a %>% filter(campaign=="2017transect" | site==3) %>%
-   filter(!(site=="DC-3" | site=="DC-4" | site=="SC-1A")) %>%
+  filter(!(site=="DC-3" | site=="DC-4" | site=="SC-1A")) %>%
   select(-D50, -psand, -note)
 
 ## (1.7) Read in slump UP and DN from Chapter 1 ====================
 c1 <- read.csv(paste0(df, "PeelPlateau_RTSandstream_geochem.csv"))
 
 cav <- c1 %>% 
-       filter(sampletype=="Stream" & 
-             (streamlocation=="UP"|streamlocation=="DN") ) %>%
-       group_by(streamlocation) %>%
-       summarize(P1av=mean(prcntC1, na.rm=TRUE), P1se=se(prcntC1),
-                 P3av=mean(prcntC3, na.rm=TRUE), P3se=se(prcntC3),
-                 percPOCav=mean(percPOC, na.rm=TRUE), percPOCse=se(percPOC),
-                 PO13Cav=mean(PO13C, na.rm=TRUE), PO13Cse=se(PO13C))
-      
+  filter(sampletype=="Stream" & 
+           (streamlocation=="UP"|streamlocation=="DN") ) %>%
+  group_by(streamlocation) %>%
+  summarize(P1av=mean(prcntC1, na.rm=TRUE), P1se=se(prcntC1),
+            P3av=mean(prcntC3, na.rm=TRUE), P3se=se(prcntC3),
+            percPOCav=mean(percPOC, na.rm=TRUE), percPOCse=se(percPOC),
+            PO13Cav=mean(PO13C, na.rm=TRUE), PO13Cse=se(PO13C))
+
 ##### ========== (2) %fines vs watershed area ==========================================================================
 
 ## (2.1) Save theme ====================
@@ -153,20 +158,17 @@ theme <- theme(panel.grid.major = element_blank(),
                legend.position = c(0,1),
                legend.direction="horizontal",
                legend.justification = c(0,1),
-              # aspect.ratio=1
                legend.key=element_blank(),
                panel.border = element_rect(colour = "black", fill=NA, size=1),
                legend.spacing = unit(0, "mm"),
-               legend.key.size = unit(0.001, "cm"),
+               legend.key.size = unit(0.001, "cm"), # This hides keys in scatterplots
                plot.margin = unit(c(0.1,0.1,0.1,0.1), "cm"))
 
 paneltheme <- theme(strip.background = element_blank(),
-                 strip.text.x = element_blank(),
-                 panel.spacing.x = unit(0.4, "inches"))
+                    strip.text.x = element_blank(),
+                    panel.spacing.x = unit(0.4, "inches"))
 
-scalex <-   scale_x_continuous(limits=c(0, 85)) 
-#guides(fill = guide_legend(override.aes = list(shape =c(21, 22))),
-#      shape = guide_legend(override.aes = list(fill = "black")))+
+scalex <- scale_x_continuous(limits=c(0, 85)) 
 
 ###  (2.2) Remformat constitutent data for graphing  ==================
 
@@ -186,27 +188,25 @@ along <- a%>%
 
 along$panel <- "conc"
 along$panel[along$variables=="docflux"|
-            along$variables=="pocflux"|
-            along$variables=="tssflux"] <- "flux"
+              along$variables=="pocflux"|
+              along$variables=="tssflux"] <- "flux"
 along$panel[along$variables=="docyield"|
-            along$variables=="pocyield"|
-            along$variables=="tssyield"] <- "yield"
+              along$variables=="pocyield"|
+              along$variables=="tssyield"] <- "yield"
 along$panel[along$variables=="POCTSSrat"|
-            along$variables=="PO13C"|
-            along$variables=="prcntC1_p"|
-            along$variables=="prcntC3_p"|
-            along$variables=="SR_d"|
-            along$variables=="SUVA254"] <- "comp"
+              along$variables=="PO13C"|
+              along$variables=="prcntC1_p"|
+              along$variables=="prcntC3_p"|
+              along$variables=="SR_d"|
+              along$variables=="SUVA254"] <- "comp"
 
 along$frac <- "doc"
 along$frac[along$variables=="POCmgL"|
-           along$variables=="pocflux"|
-           along$variables=="pocyield"] <- "poc"
-
+             along$variables=="pocflux"|
+             along$variables=="pocyield"] <- "poc"
 along$frac[along$variables=="tssmgL"|
-           along$variables=="tssflux"|
-           along$variables=="tssyield"] <- "tss"
-
+             along$variables=="tssflux"|
+             along$variables=="tssyield"] <- "tss"
 along$frac[along$variables=="POCTSSrat"] <- "%poc"
 along$frac[along$variables=="PO13C"] <- "PO13C"
 along$frac[along$variables=="prcntC1_p"] <- "%P1"
@@ -224,11 +224,6 @@ along2 <- a%>%
                values_to="values") %>%
   select(site, distm, date, variables, values, slumpYN, WatershedArea, strahlerstream)
 
-## (2.4) Graph ====================
-#ggplot(along, aes(x=distm, y=values, colour=frac)) + 
-# geom_point() +
-#facet_wrap(.~panel, scales="free_y")
-
 ## (2.4.1) Watershed Variables ======
 along2a <- along2 %>% filter(variables=="scaledgpp")
 along2b <- along2 %>% filter(variables=="percslump17act")
@@ -245,10 +240,12 @@ wdes1 <- ggplot() +
              colour="black", size=4) +
   geom_line(data=along2b, 
             aes(x=distm/1000, y=values/2), linetype=2) +
-  geom_text(data=along2b, aes(x=(distm/1000)+0.5, y = (values/2)-0.03, label = rownames(along2a)), vjust = 0) + 
+  geom_text_repel(data=along2b, 
+                  aes(x=distm/1000, y = values/2, label = rownames(along2a)), 
+                  nudge_y = -0.04, min.segment.length = 0.2) + 
   scale_shape(labels=c("%RTS", "GPP")) +
   scale_y_continuous(sec.axis = sec_axis(~ . * 2, 
-                     name=expression("% RTS"["active"]))) +
+                                         name=expression("% RTS"["active"]))) +
   labs(x="Distance (km)", y="Mean Watershed GPP") +
   scalex +
   theme + theme(legend.position="top")
@@ -278,87 +275,58 @@ wdes2 <- ggplot() +
   scalex +
   theme + theme(legend.position="top")
 
-## (2.4.2) Conc orig ======
 
-conc <- ggplot() + 
- geom_point(data=along[along$panel=="conc"&along$frac!="tss",], 
-            aes(x=distm/1000, 
-                y=values, shape=frac, fill=slumpYN),
-            colour="black", size=4) +
- geom_line(data=along[along$panel=="conc"&along$frac!="tss",], 
-            aes(x=distm/1000,
-                y=values), linetype=2) +
- scale_shape_manual(values=c(21, 22)) + 
- scale_fill_manual(values=c("white", "grey"),
-                   labels=c("NO RTS", "RTS"),
-                   guide = guide_legend(
-                     override.aes = list(shape = c(21,22)))) +
- facet_wrap(.~frac, scales="free_y") + 
- labs(x="", y=expression("Concentration (mg L"^-1*")")) +
- scalex +
- theme +
- paneltheme 
+## (2.4.3) Conc and Yield (yield_doc and yield_poc) ======
 
-## (2.4.3) Conc and flux (flux) ======
-
-flux <- ggplot() + 
-  geom_point(data=along[along$panel=="conc" & along$frac!="tss",], 
-             aes(x=distm/1000, 
-                 y=values*10, fill=slumpYN),
-             colour="black", size=4, shape=22) +
-  geom_line(data=along[along$panel=="conc" & along$frac!="tss",], 
-            aes(x=distm/1000,
-                y=values*10), linetype=3) +
-  geom_point(data=along[along$panel=="flux" & along$frac!="tss",], 
-             aes(x=distm/1000, 
-                 y=values/1000, fill=slumpYN),
-             colour="black", size=4, shape=21) +
-  geom_line(data=along[along$panel=="flux" & along$frac!="tss",], 
-            aes(x=distm/1000, 
-                y=values/1000), linetype=2) +
-  scale_fill_manual(values=c("white", "grey"),
-                    labels=c("NO RTS", "RTS"),
-                    guide = guide_legend(
-                      override.aes = list(shape = c(21,22)))) +
-  facet_wrap(.~frac, scales="free_y") + 
-  labs(x="", y=expression("Flux (g s"^-1*")")) +
+yield_doc <- ggplot() + 
+  geom_point(data=along[along$panel=="conc" & along$frac=="doc",], 
+             aes(x=distm/1000, y=values*10, fill=slumpYN, shape="Concentration"), colour="black", size=4) +
+  geom_line(data=along[along$panel=="conc" & along$frac=="doc",], 
+            aes(x=distm/1000, y=values*10), linetype=3) +
+  geom_point(data=along[along$panel=="yield" & along$frac=="doc",], 
+             aes(x=distm/1000, y=values, fill=slumpYN, shape="Yield"), colour="black", size=4) +
+  geom_line(data=along[along$panel=="yield" & along$frac=="doc",], 
+            aes(x=distm/1000, y=values), linetype=2) +
+  scale_fill_manual(values=c("white", "grey"), labels=c("NO RTS", "RTS")) +
+  scale_shape_manual(values=c("Concentration"=22, "Yield"=21)) +
+  # --- FIX 1: Set nrow = 1 so the legend lays out horizontally ---
+  guides(
+    shape = guide_legend(override.aes = list(fill = "grey", size = 4), order = 1, nrow = 1),
+    fill = guide_legend(override.aes = list(shape = 22, size = 4), order = 2, nrow = 1)
+  ) +
+  annotate("text", x = Inf, y = Inf, label = "DOC", hjust = 1.5, vjust = 1.5, size = 6, fontface = "bold") +
+  labs(x="", y=expression("Yield (mg km"^-2*" s"^-1*")")) +
   scalex+
-  scale_y_continuous(sec.axis = sec_axis(~ . / 10,
-                     name=expression("Concentration mg L"^-1))) +
-  theme + theme(legend.position="none") +
+  scale_y_continuous(sec.axis = sec_axis(~ . / 10, name=expression("Concentration mg L"^-1))) +
+  theme +
+  # --- FIX 2: Move legend to the top of the plot and layout horizontally ---
+  theme(
+    legend.position = "top", 
+    legend.justification = "center",
+    legend.direction = "horizontal",
+    legend.box = "horizontal",
+    legend.key.size = unit(0.5, "cm")
+  ) +
   paneltheme
 
-## (2.4.4) Comp1 original ======
-
-comp1 <- ggplot() +
- # geom_hline(yintercept=cav$percPOCav-30, linetype=3, colour="grey70") +
-  geom_rect(data = cav, aes(ymin = percPOCav-30-percPOCse, 
-                            ymax = percPOCav-30+percPOCse,
-                            xmin = -Inf, xmax = Inf, group=streamlocation),
-            fill="blue", colour=NA, alpha=0.2)+
-  geom_rect(data = cav, aes(ymin = PO13Cav-PO13Cse, 
-                            ymax = PO13Cav+PO13Cse,
-                            xmin = -Inf, xmax = Inf, group=streamlocation),
-            fill="orange", colour="orange", linetype=2, alpha=0.2)+
-  geom_line(data=along[along$frac=="%poc",], 
-            aes(x=distm/1000, y=values-30), linetype=1) +
-  geom_line(data=along[along$frac=="PO13C",], 
+yield_poc <- ggplot() + 
+  geom_point(data=along[along$panel=="conc" & along$frac=="poc",], 
+             aes(x=distm/1000, y=values*10, fill=slumpYN, shape="Concentration"), colour="black", size=4) +
+  geom_line(data=along[along$panel=="conc" & along$frac=="poc",], 
+            aes(x=distm/1000, y=values*10), linetype=3) +
+  geom_point(data=along[along$panel=="yield" & along$frac=="poc",], 
+             aes(x=distm/1000, y=values, fill=slumpYN, shape="Yield"), colour="black", size=4) +
+  geom_line(data=along[along$panel=="yield" & along$frac=="poc",], 
             aes(x=distm/1000, y=values), linetype=2) +
-  geom_point(data=along[along$frac=="%poc",], 
-             aes(x=distm/1000, y=values-30, fill=slumpYN),
-             colour="black", size=4, shape=21) +
-  geom_point(data=along[along$frac=="PO13C",], 
-             aes(x=distm/1000, y=values, fill=slumpYN),
-             colour="black", size=4, shape=22) +
-  scale_fill_manual(values=c("white", "grey"),
-                    labels=c("NO RTS", "RTS")) +
-  scale_y_continuous(
-    name = expression(delta^13*"C"["POC"]),
-    sec.axis = sec_axis( trans=~.+30, name="%POC")
-  ) +
-  scalex +
-  labs(x="") +
-  theme + theme(legend.position="top")
+  scale_fill_manual(values=c("white", "grey"), labels=c("NO RTS", "RTS")) +
+  scale_shape_manual(values=c("Concentration"=22, "Yield"=21)) +
+  annotate("text", x = Inf, y = Inf, label = "POC", hjust = 1.5, vjust = 1.5, size = 6, fontface = "bold") +
+  labs(x="", y=expression("Yield (mg km"^-2*" s"^-1*")")) +
+  scalex+
+  scale_y_continuous(sec.axis = sec_axis(~ . / 10, name=expression("Concentration mg L"^-1))) +
+  theme + 
+  theme(legend.position="none") + # Hide legend in POC since it's identical to DOC
+  paneltheme
 
 ## (2.4.5) %POC (comp1a) ======
 
@@ -400,32 +368,6 @@ comp1b <- ggplot() +
   labs(x="", y=expression(delta^13*"C"["POC"])) +
   theme + theme(legend.position="none")
 
-## (2.4.7) Comp2 original ======
-
-comp2 <- ggplot() + 
-  geom_rect(data = cav, aes(ymin = P1av-P1se, 
-                            ymax = P1av+P1se,
-                            xmin = -Inf, xmax = Inf, colour=streamlocation),
-            fill="blue", colour=NA, alpha=0.2)+
-  geom_rect(data = cav, aes(ymin = P3av-P3se, 
-                            ymax = P3av+P3se,
-                            xmin = -Inf, xmax = Inf, group=streamlocation),
-            fill="orange", colour="orange", linetype=2,alpha=0.2)+
-  geom_line(data=along[along$frac=="%P1"|along$frac=="%P3",], 
-             aes(x=distm/1000, y=values, linetype=frac)) +
-  geom_point(data=along[along$frac=="%P1"|along$frac=="%P3",], 
-             aes(x=distm/1000, y=values, shape=frac, fill=slumpYN),
-             colour="black", size=4) +
-  scale_linetype_manual(values=c(1,2)) +
-  scale_shape_manual(values=c(21, 22)) + 
-  scale_fill_manual(values=c("white", "grey"),
-                    labels=c("NO RTS", "RTS"),
-                    guide = guide_legend(
-                      override.aes = list(shape = c(21,22)))) +
-  labs(x="", y="% fluorescence") +
-  scalex +
-  theme +theme(legend.position="top")
-
 ## (2.4.8) P1 (comp2a) ======
 
 comp2a <- ggplot() + 
@@ -441,7 +383,7 @@ comp2a <- ggplot() +
   scale_fill_manual(values=c("white", "grey"),
                     labels=c("NO RTS", "RTS"),
                     guide = guide_legend(
-                    override.aes = list(shape=22))) +
+                      override.aes = list(shape=22))) +
   labs(x="", y="% P1") +
   scalex +
   theme + theme(legend.position="none")
@@ -470,7 +412,7 @@ comp2b <- ggplot() +
 docsed14c <- read_excel(paste0(df, "PO14C.xlsx"))
 
 doc14c <- docsed14c %>%
-          filter(MatCode=="DOC" & `Slump Site`=="SC Outlet")
+  filter(MatCode=="DOC" & `Slump Site`=="SC Outlet")
 doc14c$distm <- 70634.884
 doc14c$distm[doc14c$`Sampling Date`=="2017-08-07"] <- 71781.598
 
@@ -492,8 +434,8 @@ c14 <- ggplot() +
              aes(x=distm/1000, y=F14C),
              colour="black", size=4, shape=24, fill="grey") +
   geom_errorbar(data=a, 
-            aes(x=distm/1000, ymin=F14C_poc-F14Cerror_poc, 
-                ymax=F14C_poc+F14Cerror_poc)) +
+                aes(x=distm/1000, ymin=F14C_poc-F14Cerror_poc, 
+                    ymax=F14C_poc+F14Cerror_poc)) +
   geom_errorbar(data=doc14c, 
                 aes(x=distm/1000, ymin=F14C-`F14C error`, 
                     ymax=F14C+`F14C error`)) +
@@ -524,69 +466,64 @@ cor <- ggplot() +
   labs(y="% fluorescence", x=expression("F"^14*"C")) +
   scale_x_log10() + 
   scale_y_log10() +
-   theme +
+  theme +
   theme(legend.position=c(1,0), legend.justification=c(1,0))
-
-
-#cor.test(along$F14C_poc[along$frac=="%P1"],
- #        along$values[along$frac=="%P1"])
-
 
 ## (2.4.10) Rainfall ======
 
 a$site2 <- rownames(a)
 arain <- a%>%
-       pivot_longer(
-       cols=c(RainTot24, RainTot48, RainTot72, RainTot96),
-       names_to = "hours", values_to="rain") %>%
-       select(site2, hours, rain)
+  pivot_longer(
+    cols=c(RainTot24, RainTot48, RainTot72, RainTot96),
+    names_to = "hours", values_to="rain") %>%
+  select(site2, hours, rain)
 
 rain <- ggplot() + 
   geom_bar(data=arain,
-              aes(y=rain, x=site2, fill=hours), colour="black",
+           aes(y=rain, x=site2, fill=hours), colour="black",
            stat="identity", position="dodge") +
   scale_x_discrete(limits=c(1,2,3,4,5,6,7,8,9,10,11)) +
-  geom_point(data=a, aes(x=site2, y=dism3s), 
-             colour="black", fill="SkyBlue", shape=23, size=4) +
+  geom_point(data=a, aes(x=site2, y=dism3s, shape="Discharge"), 
+             colour="black", fill="SkyBlue", size=4) +
   scale_fill_manual(limits=c("RainTot24", "RainTot48", "RainTot72", "RainTot96"),
                     labels=c("24", "48", "72", "96"),
                     values=c("black", "grey50", "grey90", "white")) +
-  guides(fill = guide_legend(override.aes = list(shape = 22, size=5))) +
+  scale_shape_manual(values=c("Discharge"=23)) +
+  guides(fill = guide_legend(override.aes = list(shape = 22, size=5), order=1),
+         shape = guide_legend(override.aes = list(fill="SkyBlue", colour="black", size=4), order=2)) +
   labs(x="Site", y=expression("Total Rainfall (mm) \n or Discharge (m"^3*"s"^-1*")")) +
   theme + 
-  theme(legend.position="top")
+  theme(legend.position="top",
+        legend.key.size = unit(0.5, "cm")) 
 
 
-## (2.3) Print graphs ====================
+## (2.5) PRINT SINGLE FIGURE ====================
 
-library(grid)
+# Combine all plots using patchwork syntax:
+# / denotes a new row, | denotes side-by-side
+final_figure <- rain /
+  (wdes1 | wdes2) /
+  (yield_doc | yield_poc) /
+  (comp1a | comp1b) /
+  (comp2a | comp2b) /
+  (c14 | cor) +
+  plot_layout(heights = c(1, 1, 1, 1, 1, 1)) +
+  plot_annotation(tag_levels = 'a', 
+                  tag_prefix = '(', 
+                  tag_suffix = ')') & 
+  theme(plot.tag = element_text(size = 14))
 
-savePlotpdf <- function(myPlot, w, h, filename) {
-  pdf(file = paste0("Figures/", filename, ".pdf"),
-      width = w, height = h)
-  print(myPlot)
-  dev.off()
+# --- FIX 3: Check for/Create the nested Fig3 directory before saving ---
+if(!dir.exists("Figures")) {
+  dir.create("Figures")
+}
+if(!dir.exists("Figures/Fig3")) {
+  dir.create("Figures/Fig3")
 }
 
-savePlotpdf(grid.draw(
-  cbind(ggplotGrob(wdes1), ggplotGrob(wdes2), size="first")),
-            w=8.75, h=3, filename="Stonytransa")
+ggsave("Figures/Fig3/StonyCreekTransect_FullFigure.pdf", final_figure, width = 10, height = 15)
+ggsave("Figures/Fig3/StonyCreekTransect_FullFigure.png", final_figure, width = 10, height = 15, dpi = 300)
 
-savePlotpdf(grid.draw(ggplotGrob(flux)), w=9, h=2.5, filename="Stonytransb")
-
-savePlotpdf(grid.draw(
-  cbind(ggplotGrob(comp1a),ggplotGrob(comp1b), size="first")), 
-            w=8.75-0.35, h=2.5, filename="Stonytransc")
-
-savePlotpdf(grid.draw(
-  cbind(ggplotGrob(comp2a),ggplotGrob(comp2b), size="first")), 
-            w=8.75-0.35, h=2.5, filename="Stonytransd")
-
-savePlotpdf(grid.draw(
-  cbind(ggplotGrob(c14), ggplotGrob(cor), size="first")), 
-            w=8.75-0.35, h=2.5, filename="Stonytranse")
-
-savePlotpdf(grid.draw(ggplotGrob(rain)), w=9, h=2.3, filename="Stonytransrain")
 ## (2.4) Stats ====================
 
 library(car)
