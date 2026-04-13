@@ -12,7 +12,6 @@
 list=rm(list=ls(all=TRUE))
 
 ## Set working directory
-
 df <- "Data/"
 
 # load libraries
@@ -21,6 +20,7 @@ library(ggplot2)
 library(readxl)
 library(tidyr)
 library(vegan) # for check of homogeneity of variances
+library(patchwork) # Added for publication-ready multi-panel plots
 
 # load functions
 se <- function(x) {
@@ -280,33 +280,33 @@ mod1p <- rda(Y ~ delta18opermille +
                logspower+
                logsslope +
                shale_log + 
-           #    shale_log*pslump_log +
+               #    shale_log*pslump_log +
                col_log +
-            #   col_log*pslump_log +
+               #   col_log*pslump_log +
                pied_log + 
-            #   pied_log*pslump_log +
+               #   pied_log*pslump_log +
                moraine_log +
-            #   moraine_log*pslump_log +
+               #   moraine_log*pslump_log +
                lake_log +
                loggpp +
-            #   loggpp*pslump_log +
+               #   loggpp*pslump_log +
                forest_log +
                grass_log +
                lichen_log +
                logsoc +
-              # loggldist +
-              # loggldist*pslump_log + # too many terms, seems redundant to elev and not weighted across the watershed
+               # loggldist +
+               # loggldist*pslump_log + # too many terms, seems redundant to elev and not weighted across the watershed
                logslope +
                lograin +
-             #  lograin*pslump_log +
+               #  lograin*pslump_log +
                pslumpact_log +
-              # pslumpall_log +
+               # pslumpall_log +
                logslumpcount +
-              # logslumpstrahler +
+               # logslumpstrahler +
                #JDay, 
-              # slumpYNcode +
+               # slumpYNcode +
                Condition(JDay),
-               data = d, scale=TRUE)
+             data = d, scale=TRUE)
 
 rda <- mod1p
 
@@ -331,10 +331,10 @@ step.p.forward <-
              direction = "forward", 
              permutations = how(nperm = 5000),
              R2permutations = 5000)
-             
+
 
 rdasimp <- rda(Y ~ Condition(JDay) + pslumpact_log + logwy + loggpp,
-             data = d, scale=TRUE)
+               data = d, scale=TRUE)
 
 ## Global test of the RDA result
 anova(rdasimp, permutations = how(nperm = 5000))
@@ -395,7 +395,7 @@ rdagraph <- ggplot(species_centroids, aes(x = RDA1, y= RDA2)) +
             aes(x= RDA1, y = RDA2-0.15, label=site), 
             size=2.5, colour="grey40") + 
   #geom_point(colour="blue",
-   #          size = 2, shape=17)+
+  #          size = 2, shape=17)+
   geom_text(data = species_centroids, 
             aes(label = species_names),
             colour = "blue", size = 4)+
@@ -403,8 +403,8 @@ rdagraph <- ggplot(species_centroids, aes(x = RDA1, y= RDA2)) +
   geom_point(data = sites, 
              aes(fill=slumpYN, shape=slumpYN), 
              size=4, colour="white") +
-#  geom_text(data = sites, 
- #            aes(x= RDA1-0.15, y = RDA2, label=site), 
+  #  geom_text(data = sites, 
+  #            aes(x= RDA1-0.15, y = RDA2, label=site), 
   #           size=4) +
   scale_shape_manual(limits= c("Y", "N"),
                      breaks= c("Y", "N"),
@@ -472,12 +472,7 @@ poctoc$campaign <- as.character(poctoc$campaign)
 poctoc$campaign[poctoc$campaign=="2015updn"&poctoc$streamlocation=="UP"] <-"2015UP"
 poctoc$campaign[poctoc$campaign=="2015updn"&poctoc$streamlocation=="DN"] <-"2015DN"
 poctoc <- poctoc[!is.na(poctoc$pocflux),]
-#poctoc <- poctoc %>% 
- #         filter(!is.na(campaign)) %>%
-  #        pivot_longer(cols=c("tssflux", "tocflux", "poctoc"),
-   #                    names_to="var",
-    #                   values_to = "val")
-    
+
 ## (4.4) Graph =====
 options(scipen = 100)
 
@@ -494,9 +489,11 @@ perpoc <- ggplot() +
   labs(x=expression("Strahler Stream Order"), y="% of TOC as POC") +
   theme + theme(legend.position="none") 
 
+poctoc$tocyield <- poctoc$tocflux/poctoc$WatershedArea
+
 toc <- ggplot() + 
   geom_point(data=poctoc,
-             aes(x=strahlerstream, y=tocflux, shape=campaign, fill=slumpYN),
+             aes(x=strahlerstream, y=tocyield, shape=campaign, fill=slumpYN),
              size=3) +
   scale_shape_manual(limits=c("2017synoptic", "2017transect"),
                      values=c(22, 21),
@@ -507,19 +504,19 @@ toc <- ggplot() +
   guides(fill=guide_legend(override.aes = list(shape=22))) +
   scale_x_continuous(breaks=c(1,2,3,4,5,6)) +
   scale_y_log10() +
-    labs(x=expression("Strahler Stream Order"), y=expression("TOC Flux (mg s"^-1*")"))+
+  labs(x=expression("Strahler Stream Order"), y=expression("TOC Yield (mg km"^-2*" s"^-1*")"))+
   theme + 
   theme(legend.position="top", 
-        legend.box="vertical", 
+        legend.box="horizontal", 
         legend.margin=margin(0,0,0,0),
-        legend.box.margin=margin(-10,-10,-10,-10),
+        legend.box.margin=margin(0,0,0,0),
         legend.key = element_rect(fill = NA, color = NA)) 
 
 ##### ========== (5) Linear model of TOC ==========================================================================
 
 ### (5.1) TOC ====
 l <- lm(log10(tocyield) ~ percslump17act + scaledgpp + wateryield,
-             data =darch)
+        data =darch)
 
 l <- lm(log10(tocyield) ~ percslump17act + wateryield,
         data =darch)
@@ -551,71 +548,43 @@ l <- lm(log10(docyield) ~ percslump17act + scaledgpp + wateryield,
 l <- lm(log10(docyield) ~ scaledgpp + wateryield,
         data =darch)
 
+##### ============================== Section 6: Export plots ===================================================
 
-
-  ##### ============================== Section 6: Export plots ===================================================
-library(grid)
-
- ## (6.1) RDA Graph ======
-g1 <- ggplotGrob(rdagraph)
-
-grid.draw(g1)
-
-savePlotpdf <- function(myPlot, df, filename, w, h) {
-  pdf(file = paste0(df, filename),
-      width = w, height = h)
-  print(myPlot)
-  dev.off()
-}
-
+# Ensure the Figures directory exists
 dfg <- "Figures/"
-filename <- "rdaocyield.pdf"
-savePlotpdf(grid.draw(g1), dfg, filename, 4, 4)
+if(!dir.exists(dfg)) dir.create(dfg)
+
+## (6.1) Figure 1: TOC Yield and %POC across scales (Row 1) ======
+
+# We use the patchwork library to combine the toc and perpoc plots row-wise
+# guides = "collect" will pull the shared legend to the top.
+fig1 <- toc + perpoc + 
+  plot_layout(ncol = 2, guides = "collect") +
+  plot_annotation(tag_levels = 'a', tag_prefix = '(', tag_suffix = ')') & 
+  theme(legend.position = "top",
+        plot.tag = element_text(size = 18, face = "bold"))
+
+# Save Figure 1
+ggsave(filename = paste0(dfg, "Figure1_TOC_POC.pdf"), 
+       plot = fig1, width = 10, height = 5, units = "in", dpi = 300)
 
 
-## (6.2) %POC and TOC yield graph across scales ======
+## (6.2) Figure 2: RDA Graphs (Rows 2 & 3) ======
 
-savePlotpdf(grid.draw(ggplotGrob(perpoc)), dfg, "perpoc.pdf", 3.5, 3.5)
-savePlotpdf(grid.draw(ggplotGrob(toc)), dfg, "toc.pdf", 4, 4)
+# Note: The current script only generates one single RDA plot object (`rdagraph`).
+# To recreate the multi-panel grid seen in your reference image (c, d, e), you will 
+# need to assign your other RDA plots to objects (e.g., rdagraph2, rdagraph3).
 
-# run a prediction
+# IF you have 3 RDA plots, you can uncomment and use this layout:
+# fig2 <- (rdagraph + rdagraph2) / (rdagraph3 + plot_spacer()) +
+#   plot_annotation(tag_levels = list(c('c', 'd', 'e')), tag_prefix = '(', tag_suffix = ')') &
+#   theme(plot.tag = element_text(size = 18, face = "bold"))
 
-# arcsine percent transformations
-#d$shale_log <- asin(sqrt(((d$percshale)/100)))
+# For now, exporting the single rdagraph generated in the script above as Figure 2:
+fig2 <- rdagraph + 
+  labs(tag = "(c)") +
+  theme(plot.tag = element_text(size = 18, face = "bold"))
 
-# (2.3) Insert missing data ====================
-
-# article https://www.analyticsvidhya.com/blog/2016/03/tutorial-powerful-packages-imputing-missing-values/
-# recommends Hmisc
-#library(Hmisc)
-
-#impute_arg <- aregImpute(~ logtssy + logtocy + logpocy +
-#                          logdocy + logwy + logcond +
-#                         logcay + lognay + logmgy + logso4y +
-#                        logspower + slope + mDO_perc, data = d, n.impute = 5)
-
-#implogtocy <- as.data.frame((rowMeans(impute_arg$imputed$logtocy)))
-#colnames(implogtocy) <- "implogtocy"
-#implogpocy <- as.data.frame((rowMeans(impute_arg$imputed$logpocy)))
-#colnames(implogpocy) <- "implogpocy"
-#impmDOperc <- as.data.frame((rowMeans(impute_arg$imputed$mDO_perc)))
-#colnames(impmDOperc) <- "impmDOperc"
-
-#imp1 <- merge(implogpocy, implogtocy, by=0, all=TRUE)
-#rownames(imp1) <- imp1$Row.names; imp1$Row.names<- NULL
-
-#imp2 <- merge(imp1, impmDOperc, by=0, all=TRUE)
-#rownames(imp2) <- imp2$Row.names; imp2$Row.names<- NULL
-
-#dnew <- merge(d, imp2, by=0, all.x=TRUE, all.y=TRUE)
-
-#dnew$logtocy[is.na(dnew$logtocy)] <- dnew$implogtocy[is.na(dnew$logtocy)]
-#dnew$logpocy[is.na(dnew$logpocy)] <- dnew$implogpocy[is.na(dnew$logpocy)]
-#dnew$mDO_perc[is.na(dnew$mDO_perc)] <- dnew$impmDOperc[is.na(dnew$mDO_perc)]
-
-
-#d <- dnew %>% 
-# select(-implogtocy, -implogpocy,
-#       -impmDOperc, -Row.names)
-
-# imput is creating inconsistent RDA results
+# Save Figure 2
+ggsave(filename = paste0(dfg, "Figure2_RDAs.pdf"), 
+       plot = fig2, width = 9, height = 9, units = "in", dpi = 300)
