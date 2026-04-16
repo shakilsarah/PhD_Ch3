@@ -1,5 +1,5 @@
 # ===========================================================================================================#
-# OCsynopticfluxcontrols.R
+# Figure4.R
 # By: Sarah Shakil
 # Contact: shakil@ualberta.ca
 # Background: Preliminary stats
@@ -512,49 +512,13 @@ toc <- ggplot() +
         legend.box.margin=margin(0,0,0,0),
         legend.key = element_rect(fill = NA, color = NA)) 
 
-##### ========== (5) Linear model of TOC ==========================================================================
-
-### (5.1) TOC ====
-l <- lm(log10(tocyield) ~ percslump17act + scaledgpp + wateryield,
-        data =darch)
-
-l <- lm(log10(tocyield) ~ percslump17act + wateryield,
-        data =darch)
-
-darch$predtoc <- (darch$percslump17act*0.89315) + (darch$wateryield*0.01941) + 1.15933
-
-ggplot() + geom_point(data=darch, 
-                      aes(y=predtoc, x=log10(tocyield))) +
-  geom_abline(slope=1) + theme
-
-### (5.2) POC ====
-l <- lm(log10(pocyield) ~ percslump17act + scaledgpp + wateryield,
-        data =darch)
-
-l <- lm(log10(pocyield) ~ percslump17act,
-        data =darch)
-
-darch$predtoc <- (darch$percslump17act*0.89315) + (darch$wateryield*0.01941) + 1.15933
-
-ggplot() + geom_point(data=darch, 
-                      aes(y=predtoc, x=log10(tocyield))) +
-  geom_abline(slope=1) + theme
-
-
-### (5.3) DOC ====
-l <- lm(log10(docyield) ~ percslump17act + scaledgpp + wateryield,
-        data =darch)
-
-l <- lm(log10(docyield) ~ scaledgpp + wateryield,
-        data =darch)
-
-##### ============================== Section 6: Export plots ===================================================
+##### ============================== Section 5: Export plots ===================================================
 
 # Ensure the Figures directory exists
 dfg <- "Figures/"
 if(!dir.exists(dfg)) dir.create(dfg)
 
-## (6.1) Figure 1: TOC Yield and %POC across scales (Row 1) ======
+## (5.1) Figure 1: TOC Yield and %POC across scales (Row 1) ======
 
 # We use the patchwork library to combine the toc and perpoc plots row-wise
 # guides = "collect" will pull the shared legend to the top.
@@ -569,7 +533,7 @@ ggsave(filename = paste0(dfg, "Figure1_TOC_POC.pdf"),
        plot = fig1, width = 10, height = 5, units = "in", dpi = 300)
 
 
-## (6.2) Figure 2: RDA Graphs (Rows 2 & 3) ======
+## (5.2) Figure 2: RDA Graphs (Rows 2 & 3) ======
 
 # Note: The current script only generates one single RDA plot object (`rdagraph`).
 # To recreate the multi-panel grid seen in your reference image (c, d, e), you will 
@@ -588,3 +552,40 @@ fig2 <- rdagraph +
 # Save Figure 2
 ggsave(filename = paste0(dfg, "Figure2_RDAs.pdf"), 
        plot = fig2, width = 9, height = 9, units = "in", dpi = 300)
+
+##### ========== (6) Linear model of TOC ==========================================================================
+
+### (6.1) TOC ====
+l <- lm(log10(tocyield) ~ percslump17act + scaledgpp + wateryield,
+        data =darch)
+
+l <- lm(log10(tocyield) ~ percslump17act + wateryield,
+        data =darch)
+
+darch$predtoc <- (darch$percslump17act*0.89315) + (darch$wateryield*0.01941) + 1.15933
+
+ggplot() + geom_point(data=darch, 
+                      aes(y=predtoc, x=log10(tocyield))) +
+  geom_abline(slope=1) + theme
+
+### (6.2) POC ====
+l <- lm(log10(pocyield) ~ percslump17act + scaledgpp + wateryield,
+        data =darch)
+
+l <- lm(log10(pocyield) ~ percslump17act,
+        data =darch)
+
+darch$predtoc <- (darch$percslump17act*0.89315) + (darch$wateryield*0.01941) + 1.15933
+
+ggplot() + geom_point(data=darch, 
+                      aes(y=predtoc, x=log10(tocyield))) +
+  geom_abline(slope=1) + theme
+
+
+### (6.3) DOC ====
+l <- lm(log10(docyield) ~ percslump17act + scaledgpp + wateryield,
+        data =darch)
+
+l <- lm(log10(docyield) ~ scaledgpp + wateryield,
+        data =darch)
+
