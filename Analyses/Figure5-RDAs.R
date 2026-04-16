@@ -958,11 +958,11 @@ panel_c <- ggplot(species_centroids_c, aes(x = RDA1, y = RDA2)) +
 # This binds them side-by-side (A + B + C) and exports a single, perfectly aligned PDF.
 # Note: 'ocyield' is assumed to be Panel A from your previous code block.
 
-combined_plot <- ocyield + panel_b + panel_c + plot_layout(ncol = 3)
+combined_plot <- ocyield + panel_b + panel_c + plot_layout(ncol = 1)
 
 if(!dir.exists("Figures")) dir.create("Figures")
 if(!dir.exists("Figures/Fig5/")) dir.create("Figures/Fig5/", recursive = TRUE)
 
 # Save the combined figure as a high-resolution PDF
-ggsave("Figures/Fig5/Figure5_RDAs.pdf", plot = combined_plot, width = 15, height = 5, units = "in")
-ggsave("Figures/Fig5/Figure5_RDAs.png", plot=combined_plot, width = 15, height = 5, units="in", dpi = 300)
+ggsave("Figures/Fig5/Figure5_RDAs.pdf", plot = combined_plot, width = 6, height = 15, units = "in")
+ggsave("Figures/Fig5/Figure5_RDAs.png", plot=combined_plot, width = 6, height = 15, units="in", dpi = 300)

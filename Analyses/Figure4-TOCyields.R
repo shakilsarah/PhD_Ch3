@@ -528,33 +528,19 @@ fig1 <- toc + perpoc +
   theme(legend.position = "top",
         plot.tag = element_text(size = 18, face = "bold"))
 
-# Save Figure 1
-ggsave(filename = paste0(dfg, "Figure1_TOC_POC.pdf"), 
+if(!dir.exists("Figures")) dir.create("Figures")
+if(!dir.exists("Figures/Fig4/")) dir.create("Figures/Fig4/", recursive = TRUE)
+
+# Save Figure 4
+ggsave(filename = "Figures/Fig4/Figure4_TOCyields.pdf", 
        plot = fig1, width = 10, height = 5, units = "in", dpi = 300)
 
+ggsave("Figures/Fig4/Figure4_TOCyields.png", plot=fig1, width = 10, height = 5, units="in", dpi = 300)
 
-## (5.2) Figure 2: RDA Graphs (Rows 2 & 3) ======
 
-# Note: The current script only generates one single RDA plot object (`rdagraph`).
-# To recreate the multi-panel grid seen in your reference image (c, d, e), you will 
-# need to assign your other RDA plots to objects (e.g., rdagraph2, rdagraph3).
-
-# IF you have 3 RDA plots, you can uncomment and use this layout:
-# fig2 <- (rdagraph + rdagraph2) / (rdagraph3 + plot_spacer()) +
-#   plot_annotation(tag_levels = list(c('c', 'd', 'e')), tag_prefix = '(', tag_suffix = ')') &
-#   theme(plot.tag = element_text(size = 18, face = "bold"))
-
-# For now, exporting the single rdagraph generated in the script above as Figure 2:
-fig2 <- rdagraph + 
-  labs(tag = "(c)") +
-  theme(plot.tag = element_text(size = 18, face = "bold"))
-
-# Save Figure 2
-ggsave(filename = paste0(dfg, "Figure2_RDAs.pdf"), 
-       plot = fig2, width = 9, height = 9, units = "in", dpi = 300)
 
 ##### ========== (6) Linear model of TOC ==========================================================================
-
+# maybe this needs to be moved to the RDA so that 
 ### (6.1) TOC ====
 l <- lm(log10(tocyield) ~ percslump17act + scaledgpp + wateryield,
         data =darch)
