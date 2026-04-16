@@ -351,7 +351,7 @@ out
 
 #adonis2(Y ~ JDay + pslumpact_log + logwy + loggpp, data=d, permutations = 5000)
 
-##### ========== (4) Plot RDA analysis ==========================================================================
+##### ========== (4) Plot RDA analysis (PANEL A) ==========================================================================
 library(ggrepel) # Load ggrepel for non-overlapping labels
 
 # Extract scores and figure data
@@ -403,52 +403,56 @@ pub_theme <- theme_classic(base_size = 12, base_family = "sans") +
     aspect.ratio = 1
   )
 
-# Set seed for reproducible ggrepel label placement
-set.seed(42) 
+# Calculate R2
+R2adj_val <- RsquareAdj(rdasimp_ocyield)$adj.r.squared
 
-# Build the plot
+# 1. Extract the summary of the RDA model
+summ_a <- summary(rdasimp_ocyield)
+
+# 2. Extract the 'Proportion Explained' for RDA1 and RDA2 (Row 2 of the importance matrix)
+# Multiply by 100 and round to 1 decimal place
+rda1_var_a <- round(summ_a$cont$importance[2, "RDA1"] * 100, 1)
+rda2_var_a <- round(summ_a$cont$importance[2, "RDA2"] * 100, 1)
+
+# 3. Build the dynamic axis labels
+xlab_dynamic_a <- paste0("RDA1 (", rda1_var_a, "%)")
+ylab_dynamic_a <- paste0("RDA2 (", rda2_var_a, "%)")
+
+# Use bquote to construct the math expression for the title outside the plot
+panel_a_title <- bquote("(a) "*R[adj]^2*" = "*.(round(R2adj_val * 100))*"%")
+
+set.seed(42) # for repeatability of ggrepl label placement
+
 ocyield <- ggplot(species_centroids, aes(x = RDA1, y = RDA2)) +
   geom_vline(xintercept = 0, linetype = "dashed", colour = "grey70", linewidth = 0.5) + 
   geom_hline(yintercept = 0, linetype = "dashed", colour = "grey70", linewidth = 0.5) + 
-  labs(x = "RDA1 (65.9%)", y = "RDA2 (14.8%)") +
   
-  # Repelled Site Labels
-  geom_text_repel(data = sites, 
-                  aes(x = RDA1, y = RDA2, label = site), 
-                  size = 3, colour = "grey40", 
-                  max.overlaps = Inf, 
-                  box.padding = 0.3) + 
+  # automatic plugin of R2adj and proportion explained by each axis
+  labs(title = panel_a_title, x = xlab_dynamic_a, y = ylab_dynamic_a) +
+
+  # repelled labels
+  geom_text_repel(data = sites, aes(x = RDA1, y = RDA2, label = site), size = 3, colour = "grey40", max.overlaps = Inf, box.padding = 0.3) + 
+  geom_text_repel(data = species_centroids, aes(label = species_names), colour = "blue4", size = 4.5, fontface = "bold") +
+ 
+   coord_cartesian(x = c(-2, 1.5), y = c(-1.5, 1.5)) +
   
-  # Repelled Species Centroid Labels
-  geom_text_repel(data = species_centroids, 
-                  aes(label = species_names),
-                  colour = "blue4", size = 4.5, fontface = "bold") +
-  
-  coord_cartesian(x = c(-2, 1.5), y = c(-1.5, 1.5)) +
-  
-  # Data Points
-  geom_point(data = sites, 
-             aes(fill = slumpYN, shape = slumpYN), 
-             size = 4, colour = "black", stroke = 0.5) +
-  
+  # Data points
+  geom_point(data = sites, aes(fill = slumpYN, shape = slumpYN), size = 4, colour = "black", stroke = 0.5) +
   scale_shape_manual(values = c("Y" = 21, "N" = 22)) +
-  scale_fill_manual(values = c("Y" = "#FFB6C1", "N" = "#87CEEB")) + # Hex codes for distinct printing
+  scale_fill_manual(values = c("Y" = "#FFB6C1", "N" = "#87CEEB")) + 
   
   # Environmental Arrows
-  geom_segment(data = arrows,
-               aes(x = 0, xend = RDA1, y = 0, yend = RDA2),
-               arrow = arrow(length = unit(0.3, "cm"), type = "closed"), colour = "black", linewidth = 0.6) +
+  geom_segment(data = arrows, aes(x = 0, xend = RDA1, y = 0, yend = RDA2), arrow = arrow(length = unit(0.3, "cm"), type = "closed"), colour = "black", linewidth = 0.6) +
   
-  # Repelled Arrow Labels
-  geom_text_repel(data = arrows,
-                  aes(x = 1.15 * RDA1, y = 1.15 * RDA2, label = pf_names), 
-                  size = 4, fontface = "italic", colour = "black") +
+  # Repelled arrow labels
+  # Swapped text_repel for label_repel with a semi-transparent white background
+  geom_label_repel(data = arrows, aes(x = 1.15 * RDA1, y = 1.15 * RDA2, label = pf_names), 
+                   size = 4, fontface = "italic", colour = "black", 
+                   fill = alpha("white", 0.7), label.size = NA, box.padding = 0.5) +
   
-  # Panel "(a)" Label with Adjusted R-squared
-  annotate("text", x = -2, y = 1.5, label = panel_a_label, 
-           hjust = 0, vjust = 1, size = 5, fontface = "bold", colour = "black") +
-  
-  pub_theme
+  pub_theme +
+  theme(plot.title = element_text(hjust = 0, face = "bold", size = 14)) # Style the new title
+
 
 # Print the plot
 ocyield
@@ -740,9 +744,6 @@ out = varpart(Y, ~JDay, ~logcay, ~loggpp,
 #plot(out)
 out
 
-
-##### ========== (3) Plot RDA analysis ==========================================================================
-
 ##### ========== (3) Plot RDA analysis (PANEL B) ================================================================
 library(ggrepel)
 
@@ -765,37 +766,47 @@ arrows_b <- data.frame(scor_b$biplot) %>%
 R2adj_val_b <- RsquareAdj(rdasimp)$adj.r.squared
 panel_b_label <- paste0("(b) RDA Adj R² = ", round(R2adj_val_b * 100), "%")
 
+# 1. Extract the summary of the RDA model
+summ_a <- summary(rdasimp)
+
+# 2. Extract the 'Proportion Explained' for RDA1 and RDA2 (Row 2 of the importance matrix)
+# Multiply by 100 and round to 1 decimal place
+rda1_var_a <- round(summ_a$cont$importance[2, "RDA1"] * 100, 1)
+rda2_var_a <- round(summ_a$cont$importance[2, "RDA2"] * 100, 1)
+
+# 3. Build the dynamic axis labels
+xlab_dynamic_a <- paste0("RDA1 (", rda1_var_a, "%)")
+ylab_dynamic_a <- paste0("RDA2 (", rda2_var_a, "%)")
+
+# Calculate R2 and construct math expression
+R2adj_val_b <- RsquareAdj(rdasimp)$adj.r.squared
+panel_b_title <- bquote("(b) "*R[adj]^2*" = "*.(round(R2adj_val_b * 100))*"%")
+
 set.seed(42)
 
 panel_b <- ggplot(species_centroids_b, aes(x = RDA1, y = RDA2)) +
   geom_vline(xintercept = 0, linetype = "dashed", colour = "grey70", linewidth = 0.5) +
   geom_hline(yintercept = 0, linetype = "dashed", colour = "grey70", linewidth = 0.5) +
-  labs(x = "RDA1 (39.9%)", y = "RDA2 (4.4%)") +
   
-  # Sites
+  # dynamic labels
+  labs(title = panel_b_title, x = xlab_dynamic_a, y = ylab_dynamic_a) +
+  
   geom_text_repel(data = sites_b, aes(x = RDA1, y = RDA2, label = site), size = 3, colour = "grey40", max.overlaps = Inf, box.padding = 0.3) + 
   geom_point(data = sites_b, aes(fill = slumpYN, shape = slumpYN), size = 4, colour = "black", stroke = 0.5) +
-  
-  # Species Centroids
   geom_point(aes(colour = OCfrac), size = 2.5, shape = 17) +
   geom_text_repel(aes(label = species_names, colour = OCfrac), size = 4.5, fontface = "bold", show.legend = FALSE) +
-  
-  # Aesthetics
   scale_shape_manual(values = c("Y" = 21, "N" = 22)) +
   scale_fill_manual(values = c("Y" = "#FFB6C1", "N" = "#87CEEB")) + 
   scale_colour_manual(values = c("POM" = "brown", "DOM" = "blue4")) +
-  
-  # Arrows
   geom_segment(data = arrows_b, aes(x = 0, xend = RDA1, y = 0, yend = RDA2), arrow = arrow(length = unit(0.3, "cm"), type = "closed"), colour = "black", linewidth = 0.6) +
-  geom_text_repel(data = arrows_b, aes(x = 1.15 * RDA1, y = 1.15 * RDA2, label = pf_names), size = 4, fontface = "italic", colour = "black") +
   
-  # Panel label dynamically placed in top left
-  annotate("text", x = -Inf, y = Inf, label = panel_b_label, hjust = -0.1, vjust = 1.5, size = 5, fontface = "bold", colour = "black") +
+  # Use label_repel with background
+  geom_label_repel(data = arrows_b, aes(x = 1.15 * RDA1, y = 1.15 * RDA2, label = pf_names), 
+                   size = 4, fontface = "italic", colour = "black", 
+                   fill = alpha("white", 0.7), label.size = NA, box.padding = 0.5) +
   
   pub_theme +
-  theme(legend.position = "none") # Removes legend for Panel B per your original code
-
-
+  theme(legend.position = "none", plot.title = element_text(hjust = 0, face = "bold", size = 14))
 
 ##### ========== (4) Run RDA analysis 2 ==========================================================================
 
@@ -898,44 +909,49 @@ arrows_c <- data.frame(scor_c$biplot) %>%
 factorcent_c <- data.frame(scor_c$centroids) %>%
   mutate(names = c("NO RTS", "RTS"))
 
-# Calculate Adjusted R-Squared label for Panel C
+# 1. Extract the summary of the RDA model
+summ_a <- summary(rdasimp2)
+
+# 2. Extract the 'Proportion Explained' for RDA1 and RDA2 (Row 2 of the importance matrix)
+# Multiply by 100 and round to 1 decimal place
+rda1_var_a <- round(summ_a$cont$importance[2, "RDA1"] * 100, 1)
+rda2_var_a <- round(summ_a$cont$importance[2, "RDA2"] * 100, 1)
+
+# 3. Build the dynamic axis labels
+xlab_dynamic_a <- paste0("RDA1 (", rda1_var_a, "%)")
+ylab_dynamic_a <- paste0("RDA2 (", rda2_var_a, "%)")
+
+# Calculate R2 and construct math expression
 R2adj_val_c <- RsquareAdj(rdasimp2)$adj.r.squared
-panel_c_label <- paste0("(c) RDA Adj R² = ", round(R2adj_val_c * 100), "%")
+panel_c_title <- bquote("(c) "*R[adj]^2*" = "*.(round(R2adj_val_c * 100))*"%")
 
 set.seed(42)
 
 panel_c <- ggplot(species_centroids_c, aes(x = RDA1, y = RDA2)) +
   geom_vline(xintercept = 0, linetype = "dashed", colour = "grey70", linewidth = 0.5) +
   geom_hline(yintercept = 0, linetype = "dashed", colour = "grey70", linewidth = 0.5) +
-  labs(x = "RDA1 (53.8%)", y = "RDA2 (11.0%)") +
   
-  # Sites
+  # Add the title
+  labs(title = panel_c_title, x = "RDA1 (53.8%)", y = "RDA2 (11.0%)") +
+  
   geom_text_repel(data = sites_c, aes(x = RDA1, y = RDA2, label = site), size = 3, colour = "grey40", max.overlaps = Inf, box.padding = 0.3) + 
   geom_point(data = sites_c, aes(fill = slumpYN, shape = slumpYN), size = 4, colour = "black", stroke = 0.5) +
-  
-  # Species Centroids
   geom_point(aes(colour = OCfrac), size = 2.5, shape = 17) +
   geom_text_repel(aes(label = species_names, colour = OCfrac), size = 4.5, fontface = "bold", show.legend = FALSE) +
-  
-  # Factor Centroids (NO RTS / RTS)
   geom_point(data = factorcent_c, aes(x = RDA1, y = RDA2), size = 3, shape = 17, colour = "black") +
   geom_text_repel(data = factorcent_c, aes(x = RDA1, y = RDA2, label = names), size = 4.5, fontface = "bold", colour = "black") +
-  
-  # Aesthetics
   scale_shape_manual(values = c("Y" = 21, "N" = 22)) +
   scale_fill_manual(values = c("Y" = "#FFB6C1", "N" = "#87CEEB")) + 
   scale_colour_manual(values = c("POM" = "brown", "DOM" = "blue4")) +
-  
-  # Arrows
   geom_segment(data = arrows_c, aes(x = 0, xend = RDA1, y = 0, yend = RDA2), arrow = arrow(length = unit(0.3, "cm"), type = "closed"), colour = "black", linewidth = 0.6) +
-  geom_text_repel(data = arrows_c, aes(x = 1.15 * RDA1, y = 1.15 * RDA2, label = pf_names), size = 4, fontface = "italic", colour = "black") +
   
-  # Panel label dynamically placed in top left
-  annotate("text", x = -Inf, y = Inf, label = panel_c_label, hjust = -0.1, vjust = 1.5, size = 5, fontface = "bold", colour = "black") +
+  # Use label_repel with background
+  geom_label_repel(data = arrows_c, aes(x = 1.15 * RDA1, y = 1.15 * RDA2, label = pf_names), 
+                   size = 4, fontface = "italic", colour = "black", 
+                   fill = alpha("white", 0.7), label.size = NA, box.padding = 0.5) +
   
   pub_theme +
-  theme(legend.position = "none") # Removes legend for Panel C per your original code
-
+  theme(legend.position = "none", plot.title = element_text(hjust = 0, face = "bold", size = 14))
 
 ##### ============================== Section 6: Export Multi-Panel Plot =========================================
 # Since you loaded the 'patchwork' library earlier, you can ditch the clunky 'grid' code entirely.
@@ -945,7 +961,8 @@ panel_c <- ggplot(species_centroids_c, aes(x = RDA1, y = RDA2)) +
 combined_plot <- ocyield + panel_b + panel_c + plot_layout(ncol = 3)
 
 if(!dir.exists("Figures")) dir.create("Figures")
-if(!dir.exists("Figures/Fig5")) dir.create("Figures/Fig5", recursive = TRUE)
+if(!dir.exists("Figures/Fig5/")) dir.create("Figures/Fig5/", recursive = TRUE)
 
 # Save the combined figure as a high-resolution PDF
 ggsave("Figures/Fig5/Figure5_RDAs.pdf", plot = combined_plot, width = 15, height = 5, units = "in")
+ggsave("Figures/Fig5/Figure5_RDAs.png", plot=combined_plot, width = 15, height = 5, units="in", dpi = 300)

@@ -169,7 +169,7 @@ paneltheme <- theme(strip.background = element_blank(),
 
 scalex <- scale_x_continuous(limits=c(0, 85)) 
 
-###  (2.2) Remformat constitutent data for graphing  ==================
+###  (2.2) Reformat constitutent data for graphing  ==================
 
 along <- a%>%
   pivot_longer(cols=c("DOCmgL", "POCmgL", "tssmgL",
