@@ -252,177 +252,6 @@ pairs(d[, c("logtocy", "logpocy", "logdocy",
       upper.panel=panel.cor,
       diag.panel=panel.hist)
 
-##### ========== (3) Run RDA analysis ==========================================================================
-
-library(vegan)
-
-d <- na.omit(d)
-
-Y <- d %>% select(logtocy,
-                  logpocy,
-                  logdocy)
-
-pairs(Y, 
-      lower.panel=panel.smooth2, 
-      upper.panel=panel.cor,
-      diag.panel=panel.hist)
-
-#mod0p <- rda(Y ~ 1, data = d, scale=TRUE)
-
-mod0p <- rda(Y ~ Condition(JDay), data = d, scale=TRUE)
-
-#d$slumpYNcode <- 0
-#d$slumpYNcode[d$slumpYN=="Y"] <- 1
-
-mod1p <- rda(Y ~ delta18opermille +
-               logcay +
-               logwy + 
-               logspower+
-               logsslope +
-               shale_log + 
-               #    shale_log*pslump_log +
-               col_log +
-               #   col_log*pslump_log +
-               pied_log + 
-               #   pied_log*pslump_log +
-               moraine_log +
-               #   moraine_log*pslump_log +
-               lake_log +
-               loggpp +
-               #   loggpp*pslump_log +
-               forest_log +
-               grass_log +
-               lichen_log +
-               logsoc +
-               # loggldist +
-               # loggldist*pslump_log + # too many terms, seems redundant to elev and not weighted across the watershed
-               logslope +
-               lograin +
-               #  lograin*pslump_log +
-               pslumpact_log +
-               # pslumpall_log +
-               logslumpcount +
-               # logslumpstrahler +
-               #JDay, 
-               # slumpYNcode +
-               Condition(JDay),
-             data = d, scale=TRUE)
-
-rda <- mod1p
-
-plot(rda, scaling=2)
-(R2adj <- RsquareAdj(rda)$r.squared)
-(R2adj <- RsquareAdj(rda)$adj.r.squared)
-
-## Global test of the RDA result
-anova(rda, permutations = how(nperm = 5000))
-## Tests of all canonical axes
-anova(rda, by = "axis", permutations = how(nperm = 5000))
-
-# Apply Kaiser-Guttman criterion to residual axes
-# this is not really necessary (pg 221 numerical ecology)
-rda$CA$eig[rda$CA$eig > mean(rda$CA$eig)]
-
-vif.cca(rda)
-
-step.p.forward <-
-  ordiR2step(mod0p, 
-             scope = formula(mod1p), 
-             direction = "forward", 
-             permutations = how(nperm = 5000),
-             R2permutations = 5000)
-
-
-rdasimp <- rda(Y ~ Condition(JDay) + pslumpact_log + logwy + loggpp,
-               data = d, scale=TRUE)
-
-## Global test of the RDA result
-anova(rdasimp, permutations = how(nperm = 5000))
-## Tests of all canonical axes
-anova(rdasimp, by = "axis", permutations = how(nperm = 5000))
-## Tests of all terms
-anova(rdasimp, by = "terms", permutations = how(nperm = 5000))
-
-plot(rdasimp)
-
-out = varpart(Y, ~JDay, ~logwy + loggpp + pslumpact_log,
-              data = d, scale=TRUE)
-
-out = varpart(Y, ~JDay, ~logwy, ~ loggpp, ~pslumpact_log,
-              data = d, scale=TRUE)
-plot(out)
-out
-(R2adj <- RsquareAdj(rdasimp)$r.squared)
-(R2adj <- RsquareAdj(rdasimp)$adj.r.squared)
-
-adonis2(Y ~ JDay + pslumpact_log + logwy + loggpp, data=d, permutations = 5000)
-
-##### ========== (4) Plot RDA analysis ==========================================================================
-
-# scores and figure
-
-scor = scores(rdasimp, display=c("sp", "cn", "bp", "lc"), scaling=2) 
-
-sites <- data.frame(scor$constraints)
-sites$site <- d$site
-sites$slumpYN <- d$slumpYN
-
-species_centroids <- data.frame(scor$species)
-species_centroids
-species_centroids$species_names <- c("TOC","POC","DOC")
-
-arrows <- data.frame(scor$biplot)
-arrows$pf_names <- c("log(%ActiveSlumps+2)","log(WaterYield+2)","log(GPP+2)")
-arrows
-
-mult <- attributes(scores(rdasimp))$const
-
-theme <-theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
-              panel.background = element_blank(),axis.line.x = element_line(colour="black"),
-              axis.line.y = element_line(colour="black"),
-              axis.text = element_text(colour="black",size=14),legend.background=element_blank(),
-              text=element_text(size = 16),
-              legend.title=element_blank(),
-              legend.position = c(0,1),
-              legend.direction="horizontal",
-              legend.justification = c(0,1),
-              aspect.ratio=1)
-
-rdagraph <- ggplot(species_centroids, aes(x = RDA1, y= RDA2)) +
-  geom_vline(xintercept = 0,linetype="dashed", colour="grey")+ylab("RDA2 (14.8%)")+
-  geom_hline(yintercept = 0,linetype="dashed", colour="grey")+xlab("RDA1 (65.9%)")+
-  geom_text(data = sites, 
-            aes(x= RDA1, y = RDA2-0.15, label=site), 
-            size=2.5, colour="grey40") + 
-  #geom_point(colour="blue",
-  #          size = 2, shape=17)+
-  geom_text(data = species_centroids, 
-            aes(label = species_names),
-            colour = "blue", size = 4)+
-  coord_cartesian(x = c(-2, 1.5), y = c(-1.5, 1.5))+
-  geom_point(data = sites, 
-             aes(fill=slumpYN, shape=slumpYN), 
-             size=4, colour="white") +
-  #  geom_text(data = sites, 
-  #            aes(x= RDA1-0.15, y = RDA2, label=site), 
-  #           size=4) +
-  scale_shape_manual(limits= c("Y", "N"),
-                     breaks= c("Y", "N"),
-                     values= c(21, 22)) +
-  scale_fill_manual(limits= c("Y", "N"),
-                    breaks= c("Y", "N"),
-                    values= c("pink", "Sky Blue")) +
-  geom_segment(data = arrows,
-               aes(x = 0, xend = (RDA1),
-                   y = 0, yend = (RDA2)),
-               arrow = arrow(length = unit(0.4, "cm")), colour = "grey30")+
-  geom_text(data = arrows,
-            aes(x= 1.2*RDA1, y = 1.2*RDA2, #we add 10% to the text to push it slightly out from arrows
-                label = pf_names), #otherwise you could use hjust and vjust. I prefer this option
-            size = 4,
-            hjust = 0.5)+
-  theme
-
 ##### ========== (4) Plot POC:TOC, TOC, and TSS across watershed scales ==========================================================================
 # need to bring in UP, IN, DN data
 # need to have separate values for UP, IN, DN, sub-catchments, and transects
@@ -476,6 +305,17 @@ poctoc <- poctoc[!is.na(poctoc$pocflux),]
 ## (4.4) Graph =====
 options(scipen = 100)
 
+theme <-theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
+              panel.background = element_blank(),axis.line.x = element_line(colour="black"),
+              axis.line.y = element_line(colour="black"),
+              axis.text = element_text(colour="black",size=14),legend.background=element_blank(),
+              text=element_text(size = 16),
+              legend.title=element_blank(),
+              legend.position = c(0,1),
+              legend.direction="horizontal",
+              legend.justification = c(0,1),
+              aspect.ratio=1)
+
 perpoc <- ggplot() + 
   geom_point(data=poctoc,
              aes(x=strahlerstream, y=poctoc, shape=campaign, fill=slumpYN),
@@ -510,7 +350,8 @@ toc <- ggplot() +
         legend.box="horizontal", 
         legend.margin=margin(0,0,0,0),
         legend.box.margin=margin(0,0,0,0),
-        legend.key = element_rect(fill = NA, color = NA)) 
+        legend.key = element_rect(fill = NA, color = NA),
+        plot.tag = element_text(size = 18, face = "bold")) 
 
 ##### ============================== Section 5: Export plots ===================================================
 
@@ -524,9 +365,7 @@ if(!dir.exists(dfg)) dir.create(dfg)
 # guides = "collect" will pull the shared legend to the top.
 fig1 <- toc + perpoc + 
   plot_layout(ncol = 2, guides = "collect") +
-  plot_annotation(tag_levels = 'a', tag_prefix = '(', tag_suffix = ')') & 
-  theme(legend.position = "top",
-        plot.tag = element_text(size = 18, face = "bold"))
+  plot_annotation(tag_levels = 'a', tag_prefix = '(', tag_suffix = ')') 
 
 if(!dir.exists("Figures")) dir.create("Figures")
 if(!dir.exists("Figures/Fig4/")) dir.create("Figures/Fig4/", recursive = TRUE)
