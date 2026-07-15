@@ -596,21 +596,3 @@ megaslumpskm2 <- megaslumps / (10^6)
 megaslumpskm2/slumpallareastony
 View(a[,c("site", "perctotareaslump", "percactareaslump", "percslump17all")])
 
-## Interesting for later ====================
-
-# interesting graphs for later, not POC concentration decreases with watershed area
-# so the limiting factor is streams less than xx km2 moving material out to larger systems
-#ggplot() + 
- # geom_point(data=d, 
-  #           aes(x=WatershedArea, y=d$PO13C),
-   #          colour="black", size=3) +
-  # scale_y_log10() +
-  # scale_x_log10()
-  
-  #ggplot() + 
-  #geom_point(data=d, 
-   #          aes(x=WatershedArea, y=dism3s),
-   #         colour="black", size=3) +
-  #scale_y_log10() +
-  #scale_x_log10()
-

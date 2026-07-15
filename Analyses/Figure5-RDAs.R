@@ -1,5 +1,5 @@
 # ==============================================================================#
-# 2017RDA_Publication_StrictMatch.R
+# Figure5-RDAs.R
 # Background: RDA stats and 3-panel publication figure
 # Method: Strict adherence to original listwise deletion (Complete Case)
 # ==============================================================================#
