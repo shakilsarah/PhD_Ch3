@@ -268,6 +268,13 @@ SD2 <- ggplot() +
         axis.text.x = element_blank(),
         axis.ticks.x = element_blank())
 
+
+SD
+SD2
+SE
+SE2
+
+
 ##### ========== (3) DATA PREP =========================================================================
 ### (3.1) load in graphing libraries =====
 library(gtable)

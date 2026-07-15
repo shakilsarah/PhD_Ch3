@@ -41,7 +41,106 @@ source("functions/HighstatLibV10.R")
 
 d <- read.csv(paste0(df, "2017data.csv"))
 
-d <- d %>% select(site, date, campaign, loc, trans, tssmgL, POCmgL, DOCmgL, tssyield,
+## (1.11) Update the surificial geology 
+
+
+# read in the updated watmaster file 
+watmaster <- read.csv("D:/5_Projects/git/repos/Phd_Ch3/data/watmaster_wlakes_2026.csv")
+
+# replace NA in the surficial geology columns with 0
+
+watmaster <- watmaster %>%
+  mutate(
+    across(
+      c(
+        colluvial_perc,
+        morainal_perc,
+        alluvial_perc,
+        glaciofluvial_perc,
+        organic_perc,
+        glaciolacustrine_perc
+      ),
+      ~ replace_na(.x, 0)
+    )
+  )
+
+
+# Columns to bring in from watmaster
+watmaster_cols <- c(
+  "site",
+  "date",
+  "trans",
+  "percshale",
+  "colluvial_perc",
+  "morainal_perc",
+  "alluvial_perc",
+  "glaciofluvial_perc",
+  "organic_perc",
+  "glaciolacustrine_perc",
+  "lakeperc"
+)
+
+# Columns to remove from d before adding updated columns from watmaster
+cols_to_remove_from_d <- c(
+  "percshale",
+  "colluvial_perc",
+  "piedmont_perc",
+  "alluvial_perc",
+  "bedrock_perc",
+  "fluvial_perc",
+  "glaciogenic_perc",
+  "organic_perc",
+  "moraine_perc",
+  "lakeperc"
+)
+
+# check if there are any missing site-dates in watmaster
+missing_site_dates <- d %>%
+  distinct(site, date, trans) %>%
+  anti_join(
+    watmaster %>% distinct(site, date, trans),
+    by = c("site", "date", "trans")
+  )
+
+# View missing combinations
+missing_site_dates
+# yes - there are two. 
+
+
+# Subset watmaster to only site-date combinations present in d
+watmaster_subset <- watmaster %>%
+  semi_join(
+    d %>% select(site, date, trans),
+    by = c("site", "date", "trans")
+  ) %>%
+  select(all_of(watmaster_cols))
+
+# Remove old columns from d, then add selected watmaster columns by site and date
+d_updated <- d %>%
+  select(-any_of(cols_to_remove_from_d)) %>%
+  left_join(
+    watmaster_subset,
+    by = c("site", "date", "trans")
+  )
+
+# Check result
+dim(d_updated)
+head(d_updated)
+
+# Optional: check whether watmaster has duplicate site-date combinations
+# Doesn't matter because none of the SE samples are used here 
+watmaster %>%
+  count(site, date, trans) %>%
+  filter(n > 1)
+
+## Rename d_updated to d and continue 
+
+d <- d_updated
+
+# Continue 
+
+d <- d %>% select(site, date, campaign, loc, trans, tssmgL, 
+                  POCmgL, DOCmgL, tssyield,
                   pocyield, tocyield, docyield,
                   delta18opermille,
                   Cayield,
@@ -51,8 +150,8 @@ d <- d %>% select(site, date, campaign, loc, trans, tssmgL, POCmgL, DOCmgL, tssy
                   meanslope_deg,
                   percshale,
                   colluvial_perc,
-                  piedmont_perc, 
-                  moraine_perc,
+                 # piedmont_perc, 
+                  morainal_perc,
                   lakeperc,
                   scaledgpp,
                   forest_perc,
@@ -78,7 +177,7 @@ o <- o %>% select(-X, -dilfac, -samptype, -repnum)
 ## (1.2) Merge optics with data needed from d (tss conc) ====================
 
 d <- merge(d, o, 
-            by.x=c("site", "date", "loc"),
+           by.x=c("site", "date", "loc"),
            by.y=c("site", "date", "streamloc"), all.x=TRUE)
 
 # (1.3) Standardize atot to TSS ====================
@@ -132,9 +231,9 @@ x <- 2
 d$logcay <- log10(d$Cayield+x) # Ca, Mg, and Na were strongly correlated with SO4
 
 d$shale_log <- log10(d$percshale+x)
-d$col_log <- log10(d$colluvial_perc+x)
-d$pied_log <- log10(d$piedmont_perc+x)
-d$moraine_log <- log10(d$moraine_perc+x)
+d$colluvial_log <- log10(d$colluvial_perc+x)
+#d$pied_log <- log10(d$piedmont_perc+x)
+d$morainal_log <- log10(d$morainal_perc+x)
 d$logsoc <- log10(d$wmeanSOCC_100CM+x)
 
 d$loggpp <- log10(d$scaledgpp+x) 
@@ -158,6 +257,7 @@ d$lograin <- log10(d$RainTot96+x)
 # (1.11) Check the new variables ====================
 
 attach(d)
+
 dotchart(log10(atot250450TSSstd+x))
 dotchart(log10(POCTSSrat+x))
 dotchart(PO13C)
@@ -172,20 +272,20 @@ detach(d)
 d$atot250450TSSstd_log <- log10(d$atot250450TSSstd+x)
 d$POCTSSrat_log <- log10(d$POCTSSrat+x)
 #d$HIXp_log <- log10(d$HIX_p+x)
- 
+
 # (1.13) Select variables of interest ====================
 d <- d %>%
-      select(site, slumpYN,
-             JDay,
+  select(site, slumpYN,
+         JDay,
              delta18opermille,
              logcay,
              logwy, 
              logspower,
              logsslope,
              shale_log, 
-             col_log,
-             pied_log, 
-             moraine_log,
+             colluvial_log,
+           #  pied_log, 
+             morainal_log,
              lake_log,
              loggpp,
              forest_log,
@@ -216,7 +316,7 @@ pairs(d[, c(21:ncol(d))],
 ##### ========== (2) Run RDA analysis 1 ==========================================================================
 
 library(vegan)
-
+  
 d <- na.omit(d)
 
 Y <- d %>% select(
@@ -241,24 +341,26 @@ pairs(Y,
       upper.panel=panel.cor,
       diag.panel=panel.hist)
 
+# fit the  null model
 mod0p <- rda(Y ~ Condition(JDay), data = d, scale=TRUE)
 
+# fit the full model
 mod1p <- rda(Y ~ delta18opermille +
                logcay +
                logwy + 
                logspower+
                logsslope +
                shale_log + 
-               col_log +
-               pied_log + 
-               moraine_log +
+               colluvial_log +
+               #pied_log +    # bye bye 
+               morainal_log +
                lake_log +
                loggpp +
                forest_log +
                grass_log +
                lichen_log +
                logsoc +
-               logslope +
+              # logslope +
                lograin +
                pslumpact_log +
                # pslumpall_log +
@@ -271,7 +373,10 @@ mod1p <- rda(Y ~ delta18opermille +
 
 rda <- mod1p
 
+x11()
+
 plot(rda, scaling=2)
+
 (R2adj <- RsquareAdj(rda)$r.squared)
 (R2adj <- RsquareAdj(rda)$adj.r.squared)
 
@@ -298,20 +403,39 @@ RsquareAdj(step.forward)
 rdasimp <- rda(Y ~ Condition(JDay) + logcay + loggpp,
                data = d, scale=TRUE)
 
+rdasimp_morainal <- rda(Y ~ Condition(JDay) + logcay + morainal_log,
+               data = d, scale=TRUE)
+
+
 plot(rdasimp, scaling=2)
+plot(rdasimp_morainal, scaling=2)
 
 ## Global test of the RDA result
 anova(rdasimp, permutations = how(nperm = 5000))
+anova(rdasimp_morainal, permutations = how(nperm = 5000))
+
 ## Tests of all canonical axes
 anova(rdasimp, by = "axis", permutations = how(nperm = 5000))
+anova(rdasimp_morainal, by = "axis", permutations = how(nperm = 5000))
+
 ## Tests of all terms
 anova(rdasimp, by = "terms", permutations = how(nperm = 5000))
+anova(rdasimp_morainal, by = "terms", permutations = how(nperm = 5000))
 
-out = varpart(Y, ~JDay, ~logcay + loggpp,
-              data = d, scale=TRUE)
+## Test marginal -- each predictor still considered sig when considered uniquely? 
+anova(rdasimp, by = "margin", permutations = how(nperm = 5000))
+anova(rdasimp_morainal, by = "margin", permutations = how(nperm = 5000))
+
+
+# based on all the data, proceed with gpp. 
+
+#out = varpart(Y, ~JDay, ~logcay + loggpp,
+#              data = d, scale=TRUE)
 
 out = varpart(Y, ~JDay, ~logcay, ~loggpp,
               data = d, scale=TRUE)
+
+
 #plot(out)
 out
 
@@ -335,14 +459,20 @@ species_centroids$OCfrac <- c("POM", "POM", "POM", "POM", "DOM", "DOM")
 
 arrows <- data.frame(scor$biplot)
 arrows$pf_names <- c("log(CaYield+2)","log(GPP+2)")
+
+#arrows$pf_names <- c("log(CaYield+2)", "log(%morainal+2)")
+
 arrows
 
 mult <- attributes(scores(rdasimp))$const
 
-theme<-theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
-             panel.background = element_blank(),axis.line.x = element_line(colour="black"),
+theme<-theme(panel.grid.major = element_blank(),
+             panel.grid.minor = element_blank(),
+             panel.background = element_blank(),
+             axis.line.x = element_line(colour="black"),
              axis.line.y = element_line(colour="black"),
-             axis.text = element_text(colour="black",size=14),legend.background=element_blank(),
+             axis.text = element_text(colour="black",size=14),
+             legend.background=element_blank(),
              text=element_text(size = 16),
              legend.position="none",
              #legend.title=element_blank(),
@@ -353,24 +483,33 @@ theme<-theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank
 
 rdagraph <- ggplot(data = species_centroids, 
                    aes(x = RDA1, y= RDA2)) +
-  geom_vline(xintercept = 0,linetype="dashed", colour="grey")+ylab("RDA2 (4.4%)")+
-  geom_hline(yintercept = 0,linetype="dashed", colour="grey")+xlab("RDA1 (39.9%)")+
+  geom_vline(xintercept = 0,linetype="dashed", 
+             colour="grey")+ylab("RDA2 (4.4%)")+
+  
+  geom_hline(yintercept = 0,linetype="dashed", 
+             colour="grey")+xlab("RDA1 (39.9%)")+
+  
   geom_point(data = sites, 
              aes(fill=slumpYN, shape=slumpYN), 
-             size=4, colour="white") +
+             size=4, colour="black") +
+  
   geom_text(data = sites, 
             aes(x= RDA1, y = RDA2-0.15, label=site), 
             size=2.5, colour="grey40") +
+  
   geom_point(aes(colour=OCfrac),
             size = 2, shape=17)+
+  
   geom_text(data = species_centroids, 
             aes(x = RDA1*1.1, y= RDA2*1.1,
                 label = species_names,  colour=OCfrac),
             size = 4)+
+  
  # coord_cartesian(x = c(-2, 1.5), y = c(-1.5, 1.5))+
   scale_shape_manual(limits= c("Y", "N"),
                      breaks= c("Y", "N"),
                      values= c(21, 22)) +
+  
   scale_fill_manual(limits= c("Y", "N"),
                       breaks= c("Y", "N"),
                       values= c("pink", "Sky Blue")) +
@@ -380,7 +519,7 @@ rdagraph <- ggplot(data = species_centroids,
   geom_segment(data = arrows,
                aes(x = 0, xend = (RDA1),
                    y = 0, yend = (RDA2)),
-               arrow = arrow(length = unit(0.4, "cm")), colour = "grey30")+
+               arrow = arrow(length = unit(0.2, "cm")), colour = "grey10")+
   geom_text(data = arrows,
             aes(x= 1.2*RDA1, y = 1.2*RDA2, #we add 10% to the text to push it slightly out from arrows
                 label = pf_names), #otherwise you could use hjust and vjust. I prefer this option
@@ -389,6 +528,7 @@ rdagraph <- ggplot(data = species_centroids,
   theme
 
 
+rdagraph
 
 ##### ========== (4) Run RDA analysis 2 ==========================================================================
 
@@ -403,9 +543,9 @@ mod1p2 <- rda(Y ~ delta18opermille +
                 logspower+
                 logsslope +
                 shale_log + 
-                col_log +
-                pied_log + 
-                moraine_log +
+                colluvial_log +
+                #pied_log + 
+                morainal_log +
                 lake_log +
                 loggpp +
                 forest_log +
@@ -423,6 +563,10 @@ mod1p2 <- rda(Y ~ delta18opermille +
                 Condition(JDay),
               data = d, scale=TRUE)
 
+rda2 <- mod1p2 
+
+(R2adj <- RsquareAdj(rda2)$r.squared)
+(R2adj <- RsquareAdj(rda2)$adj.r.squared)
 
 ## Global test of the RDA result
 anova(mod1p2, permutations = how(nperm = 5000))
@@ -438,36 +582,129 @@ step.forward2 <-
              permutations = how(nperm = 5000),
              R2permutations = 5000)
 
-
+#original
 rdasimp2 <- rda(Y ~Condition(JDay) + as.factor(slumpYN) + 
-                  logcay + moraine_log + logspower + loggpp ,
+                  logcay + morainal_log + logspower + loggpp ,
+                data = d, scale=TRUE)
+# updated
+rdasimp2_new <- rda(Y ~Condition(JDay) + as.factor(slumpYN) + 
+                  logcay + logwy + loggpp,
                 data = d, scale=TRUE)
 
-plot(rdasimp2)
+RsquareAdj(rdasimp2_new)
 
+plot(rdasimp2)
+plot(rdasimp2_new)
 
 ## Global test of the RDA result
 anova(rdasimp2, permutations = how(nperm = 5000))
+anova(rdasimp2_new, permutations = how(nperm = 5000))
+
 ## Tests of all canonical axes
 anova(rdasimp2, by = "axis", permutations = how(nperm = 5000))
+anova(rdasimp2_new, by = "axis", permutations = how(nperm = 5000))
 
-out2 = varpart(Y, ~JDay, ~as.factor(slumpYN) + logcay + moraine_log + logspower + loggpp,
+## Tests of all terms
+anova(rdasimp2, by = "terms", permutations = how(nperm = 5000))
+anova(rdasimp2_new, by = "terms", permutations = how(nperm = 5000))
+
+## Test marginal -- each predictor still considered sig when considered uniquely? 
+anova(rdasimp2, by = "margin", permutations = how(nperm = 5000))
+anova(rdasimp2_new, by = "margin", permutations = how(nperm = 5000))
+
+# conclusion is to proceed with the new model. 
+
+rdasimp2 <- rdasimp2_new 
+
+# get the uniuqe effect of each predictor
+
+
+# Unique effect of calcium yield
+rda_cay_unique <- rda(
+  Y ~ logcay +
+    Condition(JDay + as.factor(slumpYN) + logwy + loggpp),
+  data = d,
+  scale = TRUE
+)
+
+# Unique effect of water yield
+rda_wy_unique <- rda(
+  Y ~ logwy +
+    Condition(JDay + as.factor(slumpYN) + logcay + loggpp),
+  data = d,
+  scale = TRUE
+)
+
+# Unique effect of GPP
+rda_gpp_unique <- rda(
+  Y ~ loggpp +
+    Condition(JDay + as.factor(slumpYN) + logcay + logwy),
+  data = d,
+  scale = TRUE
+)
+
+rda_slump_unique # 0.0978
+rda_cay_unique # 0.237
+rda_wy_unique  # 0.0717
+rda_gpp_unique # 0.0626
+
+# update the following - predictors are now:
+# as.factor(slumpYN) +  logcay + logwy + loggpp
+
+
+# Multiple versions here since only 4 predictors can be supported and 
+# we have 5 
+
+out2 = varpart(Y, ~JDay, ~as.factor(slumpYN) + 
+                 logcay + 
+                 logwy + 
+                 loggpp,
                data = d, scale=TRUE)
 
-slump = varpart(Y, ~JDay, ~as.factor(slumpYN), ~ logcay + moraine_log + logspower + loggpp,
+slump = varpart(Y, ~JDay, ~as.factor(slumpYN), ~ logcay + 
+                  logwy + 
+                  loggpp,
                 data = d, scale=TRUE)
 
-cay = varpart(Y, ~JDay, ~logcay, ~as.factor(slumpYN) + moraine_log + logspower + loggpp,
+cay = varpart(Y, ~JDay, ~logcay, ~as.factor(slumpYN) + 
+                logwy + 
+                loggpp,
               data = d, scale=TRUE)
 
-spower = varpart(Y, ~JDay, ~logspower, ~as.factor(slumpYN) + logcay + moraine_log + loggpp,
+wy = varpart(Y, ~JDay, ~logwy, ~as.factor(slumpYN) +
+                   logcay + 
+                   loggpp,
                  data = d, scale=TRUE)
 
-gpp= varpart(Y, ~JDay, ~ loggpp, ~as.factor(slumpYN) + logcay + moraine_log + logspower,
+gpp= varpart(Y, ~JDay, ~ loggpp, ~as.factor(slumpYN) + 
+               logcay +
+               logwy,
              data = d, scale=TRUE)
 
-mor= varpart(Y, ~JDay, ~moraine_log, ~as.factor(slumpYN) + logcay + loggpp + logspower,
-             data = d, scale=TRUE)
+out2
+slump
+cay
+gpp
+wy
+
+
+# JDay always explains barely anything. Try without
+
+no_day = varpart(Y, ~as.factor(slumpYN),
+                 ~logcay, 
+                  ~logwy, 
+                  ~loggpp,
+                        data = d, scale=TRUE)
+
+no_day
+# probably the most represnetative 
+
+
+#mor= varpart(Y, ~JDay, ~morainal_log, ~as.factor(slumpYN) + 
+#               logcay + 
+#               loggpp +
+#               logspower,
+#             data = d, scale=TRUE)
 
 
 ##### ========== (5) Plot RDA analysis 2==========================================================================
@@ -487,9 +724,11 @@ species_centroids$species_names <- c("log(%POC+2)","PO13C","P1", "P3",
 species_centroids$OCfrac <- c("POM", "POM", "POM", "POM", "DOM", "DOM")
 
 arrows <- data.frame(scor$biplot)
+
 arrows$pf_names <- c("factor", "log(CaYield+2)", 
-                     "log(%moraine+2)","log(spower+2)",
+                     "log(WaterYield+2)",
                      "log(GPP+2)")
+
 arrows <- arrows[arrows$pf_names!="factor",] # want to plot this as a centroid not an arrow
 
 factorcent <- data.frame(scor$centroids)
@@ -497,10 +736,13 @@ factorcent$names <- c("NO RTS", "RTS")
 
 mult <- attributes(scores(rdasimp2))$const
 
-theme<-theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
-             panel.background = element_blank(),axis.line.x = element_line(colour="black"),
+theme<-theme(panel.grid.major = element_blank(),
+             panel.grid.minor = element_blank(),
+             panel.background = element_blank(),
+             axis.line.x = element_line(colour="black"),
              axis.line.y = element_line(colour="black"),
-             axis.text = element_text(colour="black",size=14),legend.background=element_blank(),
+             axis.text = element_text(colour="black",size=14),
+             legend.background=element_blank(),
              text=element_text(size = 16),
              legend.position="none",
              #legend.title=element_blank(),
@@ -511,26 +753,36 @@ theme<-theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank
 
 rdagraph2 <- ggplot(data = species_centroids, 
                    aes(x = RDA1, y= RDA2)) +
-  geom_vline(xintercept = 0,linetype="dashed", colour="grey")+ylab("RDA2 (11.0%)")+
-  geom_hline(yintercept = 0,linetype="dashed", colour="grey")+xlab("RDA1 (53.8%)")+
+  geom_vline(xintercept = 0,linetype="dashed", 
+             colour="grey")+ylab("RDA2 (11.0%)")+
+  
+  geom_hline(yintercept = 0,linetype="dashed", 
+             colour="grey")+xlab("RDA1 (53.8%)")+
+  
   geom_point(data = sites, 
              aes(fill=slumpYN, shape=slumpYN), 
              size=4, colour="white") +
+  
   geom_text(data = sites, 
             aes(x= RDA1, y = RDA2-0.15, label=site), 
             size=2.5, colour="grey40") +
+  
   geom_point(aes(colour=OCfrac),
              size = 2, shape=17)+
+  
   geom_text(data = species_centroids, 
             aes(x = RDA1*1.1, y= RDA2*1.1,
                 label = species_names,  colour=OCfrac),
             size = 4)+
+  
   geom_point(data=factorcent, aes(x=RDA1, y=RDA2),
              size = 2.5, shape=17, colour="black")+
+  
   geom_text(data = factorcent, 
             aes(x = RDA1*1.1, y= RDA2*1.1,
                 label = names),
             size = 4, colour="black")+
+  
   # coord_cartesian(x = c(-2, 1.5), y = c(-1.5, 1.5))+
   scale_shape_manual(limits= c("Y", "N"),
                      breaks= c("Y", "N"),
@@ -544,7 +796,7 @@ rdagraph2 <- ggplot(data = species_centroids,
   geom_segment(data = arrows,
                aes(x = 0, xend = (RDA1),
                    y = 0, yend = (RDA2)),
-               arrow = arrow(length = unit(0.4, "cm")), colour = "grey30")+
+               arrow = arrow(length = unit(0.4, "cm")), colour = "grey130")+
   geom_text(data = arrows,
             aes(x= 1.2*RDA1, y = 1.2*RDA2, #we add 10% to the text to push it slightly out from arrows
                 label = pf_names), #otherwise you could use hjust and vjust. I prefer this option
@@ -553,6 +805,8 @@ rdagraph2 <- ggplot(data = species_centroids,
   theme
 
 
+
+rdagraph2
 
 ##### ============================== Section 4: Export plot ===================================================
 library(grid)

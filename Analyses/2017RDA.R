@@ -41,6 +41,104 @@ source("functions/HighstatLibV10.R")
 ## (1.1) Read in file ====================
 d <- read.csv(paste0(df, "2017data.csv"))
 
+
+# (1.11) Update the 2017data.csv with the new surficial geology columns -------
+
+# read in the updated watmaster file 
+watmaster <- read.csv("D:/5_Projects/git/repos/Phd_Ch3/data/watmaster_wlakes_2026.csv")
+
+
+# replace NA in the surficial geology columns with 0
+watmaster <- watmaster %>%
+  mutate(
+    across(
+      c(
+        colluvial_perc,
+        morainal_perc,
+        alluvial_perc,
+        glaciofluvial_perc,
+        organic_perc,
+        glaciolacustrine_perc
+      ),
+      ~ replace_na(.x, 0)
+    )
+  )
+
+
+# Columns to bring in from watmaster
+watmaster_cols <- c(
+  "site",
+  "date",
+  "trans",
+  "percshale",
+  "colluvial_perc",
+  "morainal_perc",
+  "alluvial_perc",
+  "glaciofluvial_perc",
+  "organic_perc",
+  "glaciolacustrine_perc",
+  "lakeperc"
+)
+
+# Columns to remove from d before adding updated columns from watmaster
+cols_to_remove_from_d <- c(
+  "percshale",
+  "colluvial_perc",
+  "piedmont_perc",
+  "alluvial_perc",
+  "bedrock_perc",
+  "fluvial_perc",
+  "glaciogenic_perc",
+  "organic_perc",
+  "moraine_perc",
+  "lakeperc"
+)
+
+# check if there are any missing site-dates in watmaster
+missing_site_dates <- d %>%
+  distinct(site, date, trans) %>%
+  anti_join(
+    watmaster %>% distinct(site, date, trans),
+    by = c("site", "date", "trans")
+  )
+
+# View missing combinations
+missing_site_dates
+# yes - there are two. 
+
+
+# Subset watmaster to only site-date combinations present in d
+watmaster_subset <- watmaster %>%
+  semi_join(
+    d %>% select(site, date, trans),
+    by = c("site", "date", "trans")
+  ) %>%
+  select(all_of(watmaster_cols))
+
+# Remove old columns from d, then add selected watmaster columns by site and date
+d_updated <- d %>%
+  select(-any_of(cols_to_remove_from_d)) %>%
+  left_join(
+    watmaster_subset,
+    by = c("site", "date", "trans")
+  )
+
+# Check result
+dim(d_updated)
+head(d_updated)
+
+# Optional: check whether watmaster has duplicate site-date combinations
+# Doesn't matter because none of the SE samples are used here 
+watmaster %>%
+  count(site, date, trans) %>%
+  filter(n > 1)
+
+## Rename d_updated to d and continue 
+
+d <- d_updated
+
+colnames(d)
+
 dall <- d
 
 d$campaign[is.na(d$campaign)] <- "2017synoptic"
@@ -51,53 +149,61 @@ d <- d %>% filter(campaign=="2017synoptic")
 # can't do this because not always a slump present
 
 ## (1.2) Select variables ====================
-d <- d%>%
-  select(site, 
-         date,
-         tssyield,
-         tocyield,
-         pocyield,
-         docyield,
-         wateryield,
-         Cayield,
-         Nayield, 
-         Mgyield, 
-         Clyield,
-         SO4yield,
-         Sryield,
-         Feyield,
-         delta18opermille,
-         slope,
-         mDO_perc,
-         mcond_uscm,
-         mpH,
-         streampower,
-         D50, psand,
-         WatershedArea, 
-         percshale, # bedrock,
-         colluvial_perc, piedmont_perc, # surficial geology
-         alluvial_perc, # few sites with alluvial and low percentages when present
-         bedrock_perc, # no bedrock perc
-         fluvial_perc, # only1 fluvial perc
-         glaciogenic_perc, #only2 glaciogenic perc
-         organic_perc, # very little organic coverage
-         moraine_perc, # surficial geology
-         lakeperc, 
-         #water_perc, #waterbodies includes river water bodies, want to specify lakes
-         scaledgpp, #scalednpp, not npp because of strong correlation to gpp, write that in methods
-         meanelev_m, meanslope_deg, # geormorph
-         barrenland_perc, forest_perc, grassland_perc, #landcover
-         lichenmoss_perc, shrubland_perc, # landcover
-         wetland_perc, #essentially no wetland cover
-         percslump17act, percslump17all,
-         slumpacccount, strahlerimpactacc,
-         wmeanSOCC_100CM,
-         gldistkm,
-         meanrough,
-         RainTot24,
-         RainTot48,
-         RainTot72,
-         RainTot96)
+
+d <- d %>%
+  select(
+    site, 
+    date,
+    tssyield,
+    tocyield,
+    pocyield,
+    docyield,
+    wateryield,
+    Cayield,
+    Nayield, 
+    Mgyield, 
+    Clyield,
+    SO4yield,
+    Sryield,
+    Feyield,
+    delta18opermille,
+    slope,
+    mDO_perc,
+    mcond_uscm,
+    mpH,
+    streampower,
+    D50,
+    psand,
+    WatershedArea, 
+    percshale,
+    colluvial_perc, # surficial geo
+    morainal_perc, # surficial geo
+    alluvial_perc, # surficial geo
+    glaciofluvial_perc, # surficial geo
+    organic_perc, # surficial geo
+    glaciolacustrine_perc, # surficial geo
+    lakeperc,
+    scaledgpp,
+    meanelev_m,
+    meanslope_deg,
+    barrenland_perc,
+    forest_perc,
+    grassland_perc,
+    lichenmoss_perc,
+    shrubland_perc,
+    wetland_perc,
+    percslump17act,
+    percslump17all,
+    slumpacccount,
+    strahlerimpactacc,
+    wmeanSOCC_100CM,
+    gldistkm,
+    meanrough,
+    RainTot24,
+    RainTot48,
+    RainTot72,
+    RainTot96
+  )
 
 ## (1.3) Calculate julian date ====================
 
@@ -132,15 +238,44 @@ d$slumpYN[d$site==29] <- "N"
 
 # (2.1) Step 1 : Outliers assessment ====================
 
+# visually inspect for outliers in response variables
 dotchart(d$tssyield)
 dotchart(d$tocyield) # site 0 might need to be removed as an outlier
 dotchart(d$pocyield) # site 0 might need to be removed as an outlier
 dotchart(d$docyield)
 
+# ok 
+dotchart(d$colluvial_perc)
+hist(d$colluvial_perc)
+
+
+
+#ok..but could trans
+dotchart(d$alluvial_perc)
+hist(d$alluvial_perc)
+
+# most values are nill
+dotchart(d$organic_perc)
+hist(d$organic_perc)
+
+# left tail 
+dotchart(d$morainal_perc)
+hist(d$morainal_perc)
+
+# right tail
+dotchart(d$glaciofluvial_perc)
+hist(d$glaciofluvial_perc)
+
+#ok 
+dotchart(d$glaciolacustrine_perc)
+hist(d$glaciolacustrine_perc)
+
 # continue for all variables .... # decided to log10(x+1) transform all variables
 
 # (2.2) Step 2: Transformations ====================
 # for outlier data and removal of variables lacking data 
+
+# create log transformastions of variables 
 
 x=2
 
@@ -162,9 +297,19 @@ d$logspower <- log10(d$streampower+x)
 d$logsslope <- log10(d$slope+x)
 
 d$shale_log <- log10(d$percshale+x)
-d$col_log <- log10(d$colluvial_perc+x)
-d$pied_log <- log10(d$piedmont_perc+x)
-d$moraine_log <- log10(d$moraine_perc+x)
+
+# apply log transform to the skewed surificial geo units 
+d$morainal_log <- log10(d$morainal_perc+x)
+d$glaciofluvial_log <- log10(d$glaciofluvial_perc+x)
+
+# transform as well 
+d$colluvial_log <- log10(d$colluvial_perc+x)
+hist(d$colluvial_log)
+
+hist(d$glaciofluvial_log)
+hist(d$morainal_log)
+# better
+
 d$barren_log <- log10(d$barrenland_perc+x)
 d$grass_log <-  log10(d$grassland_perc+x)
 d$lichen_log <- log10(d$lichenmoss_perc+x)
@@ -190,8 +335,14 @@ d$loggldist <- log10(d$gldistkm +x)
 d$lograin <- log10(d$RainTot96+x)
 
 
+
 # (2.2) Select initial data ====================
+
+# save the transformed dataset at darch
 darch <- d
+
+# reduce d to just the log transformed vars.
+# unlcear why all the surificial geo units are not included 
 d <- d %>% 
   select(site, slumpYN,
          logtocy, logpocy, logdocy, JDay,
@@ -199,7 +350,7 @@ d <- d %>%
          delta18opermille,
          logspower, logsslope,
          shale_log,
-         col_log, pied_log, moraine_log,
+         colluvial_log, morainal_log,  # use only colluvial and morainal 
          lake_log, loggpp, 
          logelev, logslope, 
          barren_log, forest_log, grass_log, lichen_log,
@@ -209,6 +360,8 @@ d <- d %>%
          logsoc, loggldist, logrough, lograin)
 
 # (2.4) Examine and reduce variables ====================
+
+x11()
 
 pairs(d[, c("logtocy", "logpocy", "logdocy", 
             "logcay", "lognay", "logmgy", "logso4y", "logsry", "logfey",
@@ -256,8 +409,12 @@ pairs(d[, c("logtocy", "logpocy", "logdocy",
 
 library(vegan)
 
+# remove rows missing values
+# leaves 32 
 d <- na.omit(d)
 
+
+# select the response matrix 
 Y <- d %>% select(logtocy,
                   logpocy,
                   logdocy)
@@ -269,50 +426,52 @@ pairs(Y,
 
 #mod0p <- rda(Y ~ 1, data = d, scale=TRUE)
 
+# fit the null/conditional model, controlling for day 
 mod0p <- rda(Y ~ Condition(JDay), data = d, scale=TRUE)
 
 #d$slumpYNcode <- 0
 #d$slumpYNcode[d$slumpYN=="Y"] <- 1
 
+# fit the full model
 mod1p <- rda(Y ~ delta18opermille +
                logcay +
                logwy + 
                logspower+
                logsslope +
                shale_log + 
-           #    shale_log*pslump_log +
-               col_log +
-            #   col_log*pslump_log +
-               pied_log + 
-            #   pied_log*pslump_log +
-               moraine_log +
-            #   moraine_log*pslump_log +
+               #    shale_log*pslump_log +
+               colluvial_log +              # updated - piedmon removed 
+               #   col_log*pslump_log +
+               morainal_log +              # updated 
+               #   moraine_log*pslump_log +
                lake_log +
                loggpp +
-            #   loggpp*pslump_log +
+               #   loggpp*pslump_log +
                forest_log +
                grass_log +
                lichen_log +
                logsoc +
-              # loggldist +
-              # loggldist*pslump_log + # too many terms, seems redundant to elev and not weighted across the watershed
+               # loggldist +
+               # loggldist*pslump_log + # too many terms, seems redundant to elev and not weighted across the watershed
                logslope +
                lograin +
-             #  lograin*pslump_log +
+               #  lograin*pslump_log +
                pslumpact_log +
-              # pslumpall_log +
+               # pslumpall_log +
                logslumpcount +
-              # logslumpstrahler +
+               # logslumpstrahler +
                #JDay, 
-              # slumpYNcode +
+               # slumpYNcode +
                Condition(JDay),
-               data = d, scale=TRUE)
+             data = d, scale=TRUE)
 
 rda <- mod1p
 
 plot(rda, scaling=2)
+
 (R2adj <- RsquareAdj(rda)$r.squared)
 (R2adj <- RsquareAdj(rda)$adj.r.squared)
+
 
 ## Global test of the RDA result
 anova(rda, permutations = how(nperm = 5000))
@@ -331,27 +490,104 @@ step.p.forward <-
              direction = "forward", 
              permutations = how(nperm = 5000),
              R2permutations = 5000)
-             
 
-rdasimp <- rda(Y ~ Condition(JDay) + pslumpact_log + logwy + loggpp,
-             data = d, scale=TRUE)
+step.p.forward
+
+
+# updated
+rdasimp <- rda(Y ~ Condition(JDay) + pslumpact_log + logwy,
+               data = d, scale=TRUE)
+
+# simplify 
+rdasimp_gpp <- rda(Y ~ Condition(JDay) + pslumpact_log + logwy + loggpp,
+              data = d, scale=TRUE)
+
+RsquareAdj(rdasimp_gpp)
+
 
 ## Global test of the RDA result
 anova(rdasimp, permutations = how(nperm = 5000))
+anova(rdasimp_gpp, permutations = how(nperm = 5000))
+
 ## Tests of all canonical axes
 anova(rdasimp, by = "axis", permutations = how(nperm = 5000))
+anova(rdasimp_gpp, by = "axis", permutations = how(nperm = 5000))
+
 ## Tests of all terms
 anova(rdasimp, by = "terms", permutations = how(nperm = 5000))
+anova(rdasimp_gpp, by = "terms", permutations = how(nperm = 5000))
+
+# run marginal to see if each term explains unique variation when 
+# considered against the other terms
+anova(rdasimp, by = "margin", permutations = how(nperm = 5000))
+anova(rdasimp_gpp, by = "margin", permutations = how(nperm = 5000))
+
 
 plot(rdasimp)
+plot(rdasimp_gpp)
 
-out = varpart(Y, ~JDay, ~logwy + loggpp + pslumpact_log,
-              data = d, scale=TRUE)
+
+# decided -- go forward with gpp 
+
+rdasimp <- rdasimp_gpp
+
+
+# What is the variance explained? 
+
+#out = varpart(Y, ~JDay, ~logwy + loggpp + pslumpact_log,
+#              data = d, scale=TRUE)
 
 out = varpart(Y, ~JDay, ~logwy, ~ loggpp, ~pslumpact_log,
               data = d, scale=TRUE)
+
 plot(out)
+
 out
+
+# Unique effect of slump presence
+rda_slump_unique <- rda(
+  Y ~ pslumpact_log +
+    Condition(JDay + logwy + loggpp),
+  data = d,
+  scale = TRUE
+)
+
+
+
+rda_wy_unique <- rda(
+  Y ~ logwy +
+    Condition(JDay + pslumpact_log + loggpp),
+  data = d,
+  scale = TRUE
+)
+
+rda_gpp_unique <- rda(
+  Y ~ loggpp +
+    Condition(JDay + pslumpact_log + logwy),
+  data = d,
+  scale = TRUE
+)
+
+rda_slump_unique # 0.305
+rda_gpp_unique # 0.278
+rda_wy_unique #0.1186
+
+
+# Test the unique effect of Julian Day
+rda_jday_unique <- rda(
+  Y ~ JDay + Condition(logwy + loggpp + pslumpact_log),
+  data = d,
+  scale = TRUE
+)
+
+anova(
+  rda_jday_unique,
+  permutations = how(nperm = 5000)
+)
+
+RsquareAdj(rda_jday_unique)
+
+
 (R2adj <- RsquareAdj(rdasimp)$r.squared)
 (R2adj <- RsquareAdj(rdasimp)$adj.r.squared)
 
@@ -377,10 +613,13 @@ arrows
 
 mult <- attributes(scores(rdasimp))$const
 
-theme <-theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),
-              panel.background = element_blank(),axis.line.x = element_line(colour="black"),
+theme <-theme(panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank(),
+              panel.background = element_blank(),
+              axis.line.x = element_line(colour="black"),
               axis.line.y = element_line(colour="black"),
-              axis.text = element_text(colour="black",size=14),legend.background=element_blank(),
+              axis.text = element_text(colour="black",size=14),
+              legend.background=element_blank(),
               text=element_text(size = 16),
               legend.title=element_blank(),
               legend.position = c(0,1),
@@ -389,39 +628,52 @@ theme <-theme(panel.grid.major = element_blank(),panel.grid.minor = element_blan
               aspect.ratio=1)
 
 rdagraph <- ggplot(species_centroids, aes(x = RDA1, y= RDA2)) +
-  geom_vline(xintercept = 0,linetype="dashed", colour="grey")+ylab("RDA2 (14.8%)")+
-  geom_hline(yintercept = 0,linetype="dashed", colour="grey")+xlab("RDA1 (65.9%)")+
+  geom_vline(xintercept = 0,linetype="dashed", 
+             colour="grey")+ylab("RDA2 (14.8%)")+
+  
+  geom_hline(yintercept = 0,linetype="dashed", 
+             colour="grey")+xlab("RDA1 (65.9%)")+
+  
   geom_text(data = sites, 
             aes(x= RDA1, y = RDA2-0.15, label=site), 
             size=2.5, colour="grey40") + 
+  
   #geom_point(colour="blue",
-   #          size = 2, shape=17)+
+  #          size = 2, shape=17)+
   geom_text(data = species_centroids, 
             aes(label = species_names),
             colour = "blue", size = 4)+
+  
   coord_cartesian(x = c(-2, 1.5), y = c(-1.5, 1.5))+
+  
   geom_point(data = sites, 
              aes(fill=slumpYN, shape=slumpYN), 
-             size=4, colour="white") +
-#  geom_text(data = sites, 
- #            aes(x= RDA1-0.15, y = RDA2, label=site), 
+             size=4, colour="black") +
+  #  geom_text(data = sites, 
+  #            aes(x= RDA1-0.15, y = RDA2, label=site), 
   #           size=4) +
+  
   scale_shape_manual(limits= c("Y", "N"),
                      breaks= c("Y", "N"),
                      values= c(21, 22)) +
+  
   scale_fill_manual(limits= c("Y", "N"),
                     breaks= c("Y", "N"),
                     values= c("pink", "Sky Blue")) +
+  
   geom_segment(data = arrows,
                aes(x = 0, xend = (RDA1),
                    y = 0, yend = (RDA2)),
-               arrow = arrow(length = unit(0.4, "cm")), colour = "grey30")+
+               arrow = arrow(length = unit(0.2, "cm")), colour = "grey10")+
+  
   geom_text(data = arrows,
             aes(x= 1.2*RDA1, y = 1.2*RDA2, #we add 10% to the text to push it slightly out from arrows
                 label = pf_names), #otherwise you could use hjust and vjust. I prefer this option
             size = 4,
             hjust = 0.5)+
   theme
+
+rdagraph
 
 ##### ========== (4) Plot POC:TOC, TOC, and TSS across watershed scales ==========================================================================
 # need to bring in UP, IN, DN data
@@ -446,6 +698,8 @@ c1$campaign <- "2015updn"
 ## (4.2) Select from dall =====
 
 dall$slumpYN <- "N"
+
+
 dall$slumpYN[dall$percslump17act>0] <- "Y"
 dall$slumpYN[dall$site==29] <- "N"
 
@@ -473,11 +727,11 @@ poctoc$campaign[poctoc$campaign=="2015updn"&poctoc$streamlocation=="UP"] <-"2015
 poctoc$campaign[poctoc$campaign=="2015updn"&poctoc$streamlocation=="DN"] <-"2015DN"
 poctoc <- poctoc[!is.na(poctoc$pocflux),]
 #poctoc <- poctoc %>% 
- #         filter(!is.na(campaign)) %>%
-  #        pivot_longer(cols=c("tssflux", "tocflux", "poctoc"),
-   #                    names_to="var",
-    #                   values_to = "val")
-    
+#         filter(!is.na(campaign)) %>%
+#        pivot_longer(cols=c("tssflux", "tocflux", "poctoc"),
+#                    names_to="var",
+#                   values_to = "val")
+
 ## (4.4) Graph =====
 options(scipen = 100)
 
@@ -507,7 +761,7 @@ toc <- ggplot() +
   guides(fill=guide_legend(override.aes = list(shape=22))) +
   scale_x_continuous(breaks=c(1,2,3,4,5,6)) +
   scale_y_log10() +
-    labs(x=expression("Strahler Stream Order"), y=expression("TOC Flux (mg s"^-1*")"))+
+  labs(x=expression("Strahler Stream Order"), y=expression("TOC Flux (mg s"^-1*")"))+
   theme + 
   theme(legend.position="top", 
         legend.box="vertical", 
@@ -515,11 +769,16 @@ toc <- ggplot() +
         legend.box.margin=margin(-10,-10,-10,-10),
         legend.key = element_rect(fill = NA, color = NA)) 
 
+
+perpoc
+
+toc
+
 ##### ========== (5) Linear model of TOC ==========================================================================
 
 ### (5.1) TOC ====
 l <- lm(log10(tocyield) ~ percslump17act + scaledgpp + wateryield,
-             data =darch)
+        data =darch)
 
 l <- lm(log10(tocyield) ~ percslump17act + wateryield,
         data =darch)
@@ -553,10 +812,10 @@ l <- lm(log10(docyield) ~ scaledgpp + wateryield,
 
 
 
-  ##### ============================== Section 6: Export plots ===================================================
+##### ============================== Section 6: Export plots ===================================================
 library(grid)
 
- ## (6.1) RDA Graph ======
+## (6.1) RDA Graph ======
 g1 <- ggplotGrob(rdagraph)
 
 grid.draw(g1)

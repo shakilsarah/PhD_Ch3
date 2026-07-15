@@ -86,22 +86,23 @@ watmaster <- merge(wa, bgeo, by="Name")
 # ch3wssurfgeowolakes_v2.csv --> lake area clipped out 
 # just use the wo (without) lakes 
 
-sgeo <- read.csv(paste0(df, "ch3wssurfgeowolakes_v2.csv"))
+sgeo <- read.csv(paste0(df, "ch3wssurfgeowlakes_v2.csv"))
 
 # update sgeo with a new column - Name_2 - which includes
 # the new categories 
 
+# Alluvial, Colluvial, Organic, (3)
+# Glaciofluvial, Glaciolacustrine, Morainal (3)
+# 7 in total
 sgeo <- sgeo %>%
   mutate(
     Name_2 = case_when(
       Name %in% c("Af", "ApAt", "At") ~ "Alluvial",
-      Name %in% c("Ct", "Cv", "Cx", "Cy") ~ "Colluvial",
+      Name %in% c("Ct", "Cv", "Cx", "Cy", "R/Cv") ~ "Colluvial",
       Name == "fOpOfPO" ~ "Organic",
       Name %in% c("Gp", "Gt") ~ "Glaciofluvial",
       Name == "Lb" ~ "Glaciolacustrine",
-      Name %in% c("MhMrMm", "MpMbMpv") ~ "Morainal",
-      Name == "Mv" ~ "Morainal/Bedrock",
-      Name == "R/Cv" ~ "Bedrock/Colluvium",
+      Name %in% c("MhMrMm", "MpMbMpv", "Mv") ~ "Morainal",
       TRUE ~ NA_character_
     ) 
   ) %>%
@@ -153,8 +154,8 @@ watmaster <- merge(watmaster, sgeo, by="Name")
 
 # quick check to see that the surficial geology unit % sum to 100
 
-surf_cols <- c("Bedrock/Colluvium","Colluvial","Alluvial","Organic",  
-               "Glaciofluvial","Glaciolacustrine","Morainal","Morainal/Bedrock")
+surf_cols <- c("Colluvial","Alluvial","Organic",  
+               "Glaciofluvial","Glaciolacustrine","Morainal")
 
 surf_check <- watmaster %>%
   mutate(
@@ -426,7 +427,7 @@ watmaster <- merge(watmaster, slumps2016, by="Name", all.x=TRUE)
 # SKIP -- NOT IN THE FINAL WATMASTER
 
 #slumps17old <- read.csv(paste0(df, 
- #                             "rtsdelineationsstony_union_watersheds2021061.csv"))
+#                             "rtsdelineationsstony_union_watersheds2021061.csv"))
 
 ## UH-OH!! ## 
 slumps17act <- read.csv(paste0(df, 
@@ -914,10 +915,8 @@ watmaster <- watmaster %>%
 # rename some of the columns 
 watmaster <- watmaster %>%
   rename(
-    bedrockcolluvium_perc = `Bedrock/Colluvium`,
     colluvial_perc = Colluvial,
     morainal_perc = Morainal,
-    morainalbedrock_perc = `Morainal/Bedrock`,
     alluvial_perc = Alluvial,
     glaciofluvial_perc = Glaciofluvial,
     organic_perc = Organic,
@@ -937,4 +936,4 @@ watmaster <- watmaster %>%
 # consider just removing land cover...
 
 # print watmaster
-write.csv(watmaster, paste0(df, "watmaster_2026.csv"))
+write.csv(watmaster, paste0(df, "watmaster_wlakes_2026.csv"))

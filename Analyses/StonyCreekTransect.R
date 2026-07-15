@@ -21,6 +21,7 @@ library(ggplot2)
 library(readxl)
 library(tidyr)
 
+
 # load functions
 se <- function(x) {
   sqrt(var(x, na.rm=TRUE)/length(x[!is.na(x)])) 
@@ -36,6 +37,102 @@ lengthnona <- function(x) {
 ## (1.1) Read in OC yields, PO13C, and POCTSSrat ====================
 d <- read.csv(paste0(df, "2017data.csv"))
 
+## (1.11) Update the surficial geology =============================
+
+# read in the updated watmaster file 
+watmaster <- read.csv("D:/5_Projects/git/repos/Phd_Ch3/data/watmaster_wlakes_2026.csv")
+
+# replace NA in the surficial geology columns with 0
+
+watmaster <- watmaster %>%
+  mutate(
+    across(
+      c(
+        colluvial_perc,
+        morainal_perc,
+        alluvial_perc,
+        glaciofluvial_perc,
+        organic_perc,
+        glaciolacustrine_perc
+      ),
+      ~ replace_na(.x, 0)
+    )
+  )
+
+
+# Columns to bring in from watmaster
+watmaster_cols <- c(
+  "site",
+  "date",
+  "trans",
+  "percshale",
+  "colluvial_perc",
+  "morainal_perc",
+  "alluvial_perc",
+  "glaciofluvial_perc",
+  "organic_perc",
+  "glaciolacustrine_perc",
+  "lakeperc"
+)
+
+# Columns to remove from d before adding updated columns from watmaster
+cols_to_remove_from_d <- c(
+  "percshale",
+  "colluvial_perc",
+  "piedmont_perc",
+  "alluvial_perc",
+  "bedrock_perc",
+  "fluvial_perc",
+  "glaciogenic_perc",
+  "organic_perc",
+  "moraine_perc",
+  "lakeperc"
+)
+
+# check if there are any missing site-dates in watmaster
+missing_site_dates <- d %>%
+  distinct(site, date) %>%
+  anti_join(
+    watmaster %>% distinct(site, date),
+    by = c("site", "date")
+  )
+
+# View missing combinations
+missing_site_dates
+# yes - there are two 
+
+# Subset watmaster to only site-date combinations present in d
+watmaster_subset <- watmaster %>%
+  semi_join(
+    d %>% select(site, date),
+    by = c("site", "date")
+  ) %>%
+  select(all_of(watmaster_cols))
+
+# Remove old columns from d, then add selected watmaster columns by site and date
+d_updated <- d %>%
+  select(-any_of(cols_to_remove_from_d)) %>%
+  left_join(
+    watmaster_subset,
+    by = c("site", "date")
+  )
+
+# Check result
+dim(d_updated)
+head(d_updated)
+
+# Optional: check whether watmaster has duplicate site-date combinations
+# Doesn't matter because none of the SE samples are used here 
+watmaster %>%
+  count(site, date) %>%
+  filter(n > 1)
+
+## Rename d_updated to d and continue 
+
+d <- d_updated
+
+# Continue 
+
 d <- d %>%
   select(campaign, site, date, D50, psand, tssmgL,
          POCmgL, DOCmgL, tssflux, pocflux, docflux, 
@@ -44,8 +141,9 @@ d <- d %>%
          RainTot24, RainTot48, RainTot72, RainTot96,
          WatershedArea,
          delta18opermille, Cayield, wateryield, streampower,
-         slope, percshale, colluvial_perc, piedmont_perc,
-         moraine_perc, lakeperc, scaledgpp, forest_perc, 
+         slope, percshale, 
+         colluvial_perc, morainal_perc,  # updated 
+         lakeperc, scaledgpp, forest_perc, 
          grassland_perc, lichenmoss_perc, wmeanSOCC_100CM,
          meanslope_deg, RainTot96, percslump17act, percslump17all,
          slumpacccount, strahlerimpactacc, strahlerstream, dism3s)
@@ -182,7 +280,7 @@ along <- a%>%
          F14C_doc, F14Cerror_doc,
          variables, values, slumpYN, WatershedArea,
          scaledgpp, percslump17act, wateryield, meanslope_deg,
-         streampower, moraine_perc, colluvial_perc, Cayield, strahlerstream)
+         streampower, morainal_perc, colluvial_perc, Cayield, strahlerstream) # updated
 
 along$panel <- "conc"
 along$panel[along$variables=="docflux"|
@@ -218,7 +316,7 @@ along$frac[along$variables=="SUVA254"] <- "SUVA"
 
 along2 <- a%>%
   pivot_longer(cols=c("scaledgpp", "percslump17act", "wateryield",
-                      "meanslope_deg", "moraine_perc",
+                      "meanslope_deg", "morainal_perc",  # updated
                       "colluvial_perc", "slumpacccount"),
                names_to="variables",
                values_to="values") %>%
@@ -253,9 +351,12 @@ wdes1 <- ggplot() +
   scalex +
   theme + theme(legend.position="top")
 
-var <- c("moraine_perc", "colluvial_perc")
+var <- c("morainal_perc", "colluvial_perc")
+
 along2c <- along2 %>% filter(variables %in% var)
+
 var <- c("meanslope_deg")
+
 along2d <- along2 %>% filter(variables %in% var)
 
 wdes2 <- ggplot() + 
@@ -272,11 +373,15 @@ wdes2 <- ggplot() +
              colour="black", size=4) +
   geom_line(data=along2d, 
             aes(x=distm/1000, y=values, group=variables), linetype=2) +
-  scale_shape(labels=c("% Colluvial", "Watershed Slope", "% Moraine")) +
+  scale_shape(labels=c("% Colluvial", "Watershed Slope", "% Morainal")) +
   labs(x="Distance (km)", 
-       y="% Colluvial/Moraine or \n Mean Watershed Slope (\u00B0)") +
+       y="% Colluvial/Morainal or \n Mean Watershed Slope (\u00B0)") +
   scalex +
   theme + theme(legend.position="top")
+
+# Close all active graphics devices
+graphics.off()
+wdes2
 
 ## (2.4.2) Conc orig ======
 
@@ -560,33 +665,81 @@ rain <- ggplot() +
 ## (2.3) Print graphs ====================
 
 library(grid)
+library(svglite)
 
-savePlotpdf <- function(myPlot, w, h, filename) {
-  pdf(file = paste0("Figures/", filename, ".pdf"),
-      width = w, height = h)
-  print(myPlot)
+# Function to save ggplot or grob as SVG
+savePlotSVG <- function(myPlot, w, h, filename, out_dir = "Figures") {
+  
+  # Create output folder if it does not already exist
+  if (!dir.exists(out_dir)) {
+    dir.create(out_dir, recursive = TRUE)
+  }
+  
+  # Full output path
+  out_file <- file.path(out_dir, paste0(filename, ".svg"))
+  
+  # Open SVG device
+  svglite::svglite(file = out_file, width = w, height = h)
+  
+  # Draw plot/grob
+  if (inherits(myPlot, "ggplot")) {
+    print(myPlot)
+  } else {
+    grid::grid.draw(myPlot)
+  }
+  
+  # Close device
   dev.off()
 }
 
-savePlotpdf(grid.draw(
-  cbind(ggplotGrob(wdes1), ggplotGrob(wdes2), size="first")),
-            w=8.75, h=3, filename="Stonytransa")
+# Choose where you want the plots saved
+fig_dir <- "D:/5_Projects/Shakil_Ch3/figures/transect"
 
-savePlotpdf(grid.draw(ggplotGrob(flux)), w=9, h=2.5, filename="Stonytransb")
+# Save figures as SVGs
+savePlotSVG(
+  cbind(ggplotGrob(wdes1), ggplotGrob(wdes2), size = "first"),
+  w = 8.75, h = 3,
+  filename = "Stonytransa",
+  out_dir = fig_dir
+)
 
-savePlotpdf(grid.draw(
-  cbind(ggplotGrob(comp1a),ggplotGrob(comp1b), size="first")), 
-            w=8.75-0.35, h=2.5, filename="Stonytransc")
+savePlotSVG(
+  ggplotGrob(flux),
+  w = 9, h = 2.45,
+  filename = "Stonytransb",
+  out_dir = fig_dir
+)
 
-savePlotpdf(grid.draw(
-  cbind(ggplotGrob(comp2a),ggplotGrob(comp2b), size="first")), 
-            w=8.75-0.35, h=2.5, filename="Stonytransd")
+savePlotSVG(
+  cbind(ggplotGrob(comp1a), ggplotGrob(comp1b), size = "first"),
+  w = 8.75 - 0.35, h = 2.45,
+  filename = "Stonytransc",
+  out_dir = fig_dir
+)
 
-savePlotpdf(grid.draw(
-  cbind(ggplotGrob(c14), ggplotGrob(cor), size="first")), 
-            w=8.75-0.35, h=2.5, filename="Stonytranse")
+savePlotSVG(
+  cbind(ggplotGrob(comp2a), ggplotGrob(comp2b), size = "first"),
+  w = 8.75 - 0.35, h = 2.45,
+  filename = "Stonytransd",
+  out_dir = fig_dir
+)
 
-savePlotpdf(grid.draw(ggplotGrob(rain)), w=9, h=2.3, filename="Stonytransrain")
+savePlotSVG(
+  cbind(ggplotGrob(c14), ggplotGrob(cor), size = "first"),
+  w = 8.75 - 0.35, h = 2.5,
+  filename = "Stonytranse",
+  out_dir = fig_dir
+)
+
+savePlotSVG(
+  ggplotGrob(rain),
+  w = 9, h = 2.3,
+  filename = "Stonytransrain",
+  out_dir = fig_dir
+)
+
+
+
 ## (2.4) Stats ====================
 
 library(car)
