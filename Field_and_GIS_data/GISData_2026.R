@@ -21,6 +21,7 @@ library(dplyr)
 library(readxl)
 library(tidyr)
 
+
 # load functions
 se <- function(x) {
   sqrt(var(x, na.rm=TRUE)/length(x[!is.na(x)])) 
@@ -37,22 +38,42 @@ lengthnona <- function(x) {
 wa <- read_excel(paste0(df, "watershedareas.xlsx"), sheet="watershedareasforR")
 
 # (1.2) Watershed bedrock geology ==========
+
+# Calculate the percentage of each watershed (sub-catchment) underlain by shale 
+# bedrock and merges that value into the watershed master table. 
+
 bgeo <- read.csv(paste0(df, "watershedbedgeol.csv"))
 bgeo$shale <- NA
+
+# Mark polygon as "Y" (yes) if any of the 4 litholgoy columns contain "Shale"
+# Keep as NA if no "Shale"
+
 bgeo$shale[bgeo$Lithology1=="Shale" | 
             bgeo$Lithology2=="Shale" |
             bgeo$Lithology3=="Shale" |
             bgeo$Lithology4=="Shale"] <- "Y"
+
+# Keep only the required columns 
 bgeo <- bgeo %>% select(Name, polygonareakm2, shale) 
+
+# Calculate the wateshed area from the bedrock polygons, grouping polygons
+# by name 
+
 bgeowat <- bgeo %>%
             group_by(Name) %>%
             summarise(sumwatarea = sum(polygonareakm2))
+
+# Calculate area by shale category
 bgeoshale <- bgeo %>%
               group_by(Name, shale) %>%
               summarise(sumshalearea = sum(polygonareakm2))
+# merge shale area with total watershed area
 bgeo <- merge(bgeoshale, bgeowat, by=c("Name"))
+# calculate the percentage of shale 
 bgeo$percshale <- (bgeo$sumshalearea/bgeo$sumwatarea)*100
+# keep only shale rows 
 bgeo <- bgeo[!is.na(bgeo$shale),]
+# keep only watershed name and percent shale
 bgeo <- bgeo %>%
          select(Name, percshale)
 
@@ -60,14 +81,47 @@ bgeo <- bgeo %>%
 watmaster <- merge(wa, bgeo, by="Name")
 
 # (1.3) Watershed surficial geology ==========
-sgeo <- read.csv(paste0(df, "surficialgeolareacote.csv"))
-sgeo <- sgeo %>% select(geoltype=Name, Name=Name_1, polygonareakm2)
+
+# ch3wssurfgeowlakes_v2.csv -- > with lakes 
+# ch3wssurfgeowolakes_v2.csv --> lake area clipped out 
+# just use the wo (without) lakes 
+
+sgeo <- read.csv(paste0(df, "ch3wssurfgeowlakes_v2.csv"))
+
+# update sgeo with a new column - Name_2 - which includes
+# the new categories 
+
+# Alluvial, Colluvial, Organic, (3)
+# Glaciofluvial, Glaciolacustrine, Morainal (3)
+# 7 in total
+sgeo <- sgeo %>%
+  mutate(
+    Name_2 = case_when(
+      Name %in% c("Af", "ApAt", "At") ~ "Alluvial",
+      Name %in% c("Ct", "Cv", "Cx", "Cy", "R/Cv") ~ "Colluvial",
+      Name == "fOpOfPO" ~ "Organic",
+      Name %in% c("Gp", "Gt") ~ "Glaciofluvial",
+      Name == "Lb" ~ "Glaciolacustrine",
+      Name %in% c("MhMrMm", "MpMbMpv", "Mv") ~ "Morainal",
+      TRUE ~ NA_character_
+    ) 
+  ) %>%
+  relocate(Name_2, .after = Name)
+  
+
+# rename columns and keep relevant ones: geoltype, site name, and area 
+
+sgeo <- sgeo %>% select(geoltype=Name_2, Name=Name_1, polygonareakm2=Area_km2geodesic)
 
 # Name_1 is the watershed name 
+# Calculate the total area of  all surficial geology polygons within each watershed  
 
 sgeowat <- sgeo %>%
             group_by(Name) %>%
             summarise (sumwatarea = sum(polygonareakm2))
+
+# calculate the area by surficial geology type
+
 sgeotype <- sgeo %>%
   group_by(Name, geoltype) %>%
   summarise (sumtypearea = sum(polygonareakm2))
@@ -75,17 +129,50 @@ sgeotype <- sgeo %>%
 #t <- merge(wsgeowat, wbgeowat, by="Name")
 #t$t <- t$sumwatarea.x/t$sumwatarea.y
 # odd that there are some minor discrepencies, but lakes weren't removed, should be fine
-sgeo <- merge(sgeotype, sgeowat, by="Name")
 
+# merge type-specific area with total watershed area
+sgeo <- merge(sgeotype, sgeowat, by="Name")
+# now, each type of surfifial geology has the total area of that type of SG, 
+# and the total area in the watershed (allows us to calculate the percentage)
+
+# calculate the percentage 
 sgeo$sgperc <- (sgeo$sumtypearea/sgeo$sumwatarea)*100
+
+# clean up - keep only what we need 
 sgeo <- sgeo %>% select(Name, geoltype, sgperc)
+
+# convert to long format so each surficial geology type becomes its own column
+# note that there are many NAs 
+
+# also note - these are the names that are used later. The df must be modified 
+# with new SG names from the beginning, then the rest of the code must be updated 
 sgeo <- sgeo %>%
          pivot_wider(id_cols=Name, names_from = geoltype, values_from = sgperc)
 
 # merge with watershed area
 watmaster <- merge(watmaster, sgeo, by="Name")
 
+# quick check to see that the surficial geology unit % sum to 100
+
+surf_cols <- c("Colluvial","Alluvial","Organic",  
+               "Glaciofluvial","Glaciolacustrine","Morainal")
+
+surf_check <- watmaster %>%
+  mutate(
+    surf_sum = rowSums(across(all_of(surf_cols)), na.rm = TRUE),
+    surf_diff_from_100 = surf_sum - 100
+  ) %>%
+  select(Name, all_of(surf_cols), surf_sum, surf_diff_from_100)
+
+# make a quick version of watmaster (unmodified) as a backup
+
+watmaster_clean <- watmaster
+
 # (1.4) Watershed nhnmodified lake area km2 ==========
+
+# calculate the percentrage of each watershed covered by lakes, and 
+# merge that value into watmaster
+
 wlake <- read.csv(paste0(df, "watershedlakearea_updated20210726.csv"))
 
 wlakewat <- wlake %>%
@@ -93,23 +180,39 @@ wlakewat <- wlake %>%
   group_by(Name) %>%
   summarise (sumwatarea = sum(polygonareakm2))
 
+# compare the watershed areas with the surifical geology watershed areas 
+# they are almost identical 
+
 t <- merge(wlakewat, sgeowat, by="Name")
 t$t <- t$sumwatarea.x/t$sumwatarea.y
-# odd that there are some minor discrepencies, but lakes weren't removed, should be fine
+# sarah original note: odd that there are some minor discrepencies, but lakes weren't removed, should be fine
+
+# calculate the total lake area per the watershed 
 
 lakearea <- wlake %>%
   filter (waterDefinitionText=="Lake") %>%
   group_by(Name, waterDefinitionText) %>%
   summarise (sumlakearea = sum(polygonareakm2))
 
+# merge the total watershed area and lake area 
 wlake <- merge(wlakewat, lakearea, by="Name")
+
+# calculate the percent of lake area 
 wlake$lakeperc <- (wlake$sumlakearea/wlake$sumwatarea)*100
+# the highest is 9%, most <3 % 
+
+length(unique(watmaster$Name))
+# 83 - good 
 
 # merge with watershed area
 watmaster <- merge(watmaster, wlake, by="Name", all.x=TRUE)
+
+# replace missing lake percentages with 0
 watmaster$lakeperc[is.na(watmaster$lakeperc)] <- 0
 
 # (1.5) Watershed GPP mean ==========
+
+# this section add watershed-level GPP to watmaster 
 
 #wgppmean1 <- read.csv(paste0(df, "ShedsGPPmean_20170712_2.csv"))
 #wgppmean1 <- wgppmean1 %>% select(Name, mean20170712=mean)
@@ -138,17 +241,27 @@ watmaster$lakeperc[is.na(watmaster$lakeperc)] <- 0
 
 wgppmean <- read.csv(paste0(df, 
                             "ShedsGPPmean_stackedsum20170704to20170813.csv"))
+# scale the GPP 
 wgppmean$scaledgpp <- wgppmean$mean*0.0001
 
+# simplify to only include the columns needed
+wgppmean_clean <- wgppmean[, c("Name", "scaledgpp")]
+
 # merge with master file
-watmaster <- merge(watmaster, wgppmean, by="Name")
+watmaster <- merge(watmaster, wgppmean_clean, by="Name")
 
 # (1.6) Watershed NPP mean ==========
+
+# add NPP mean 
+
 wnppmean <- read.csv(paste0(df, "ShedsannualNPPmean_2017.csv"))
 wnppmean$scalednpp <- wnppmean$mean*0.0001
 
+# again - clean 
+wnppmean_clean <- wnppmean[, c("Name", "scalednpp")]
+
 # merge with master file
-watmaster <- merge(watmaster, wnppmean, by="Name")
+watmaster <- merge(watmaster, wnppmean_clean, by="Name")
 
 # (1.7) Watershed elevation ==========
 
@@ -168,38 +281,115 @@ watmaster <- merge(watmaster, wslope, by="Name")
 
 # (1.9) Land cover ==========
 
+# calculate the percentage of each watershed covered by each land-cover category
+
 wslc <- read.csv(paste0(df, "watershedlandcovernolakes.csv"))
-wslc_legend <- read_excel(paste0(df, "LandCoverCircaCode.xlsx"), sheet="2015")
+
 wslc$gridcode[wslc$FID_canlc2015_nolakes_nad83zn8==-1] <- NA
 wslc <- wslc %>% select(Name, gridcode, polygonareakm2)
+
+length(unique(wslc$gridcode))
+# there are 14 gridcodes 
+unique(wslc$gridcode)
+# 10, 8, 11,  6,  5, 12,  1, 13, 18, 16, NA, 17,  2, 14
+
+sum(is.na(wslc$gridcode))
+# 153 
+# There are 153 with no landcover distinction 
+
+# read in the code for the landcover 
+
+# the original LandCoverCircaCode.xlsx does not exist
+# the code waqs found online and added to the data 
+
+#wslc_legend <- read_excel(paste0(df, "LandCoverCircaCode.xlsx"), sheet="2015")
+wslc_legend <- read_excel(paste0(df, "LandCover2015.xls"))
+
+# subset to only include the landcover groups that are in wslc
+wslc_legend <- wslc_legend %>%
+  filter(Value %in% unique(wslc$gridcode))
+
+# Keep only the Value and Class_EN
+wslc_legend <- wslc_legend[, c("Value", "Class_EN")]
+
+# reassign the Class_EN using a simplified 8 groups 
+# rename Class_EN to gridcode aswell 
+
+wslc_legend <- wslc_legend %>%
+  mutate(
+    Class_EN = case_when(
+      Value %in% c(1, 2, 5, 6) ~ "forest",
+      Value == 8 ~ "shrubland",
+      Value == 10 ~ "grassland",
+      Value %in% c(11, 12, 13) ~ "lichenmoss",
+      Value == 14 ~ "wetland",
+      Value == 16 ~ "barrenland",
+      Value == 17 ~ "urbanbuilt",
+      Value == 18 ~ "water",
+      TRUE ~ Class_EN
+    )
+  ) %>%
+  rename(
+    gridcode = Value,
+    landcover = Class_EN
+  )
+
+
 wslc <- merge(wslc, wslc_legend, by="gridcode", all.x=TRUE)
-wslc$level1desc[wslc$FID_canlc2015_nolakes_nad83zn8==-1] <- NA
-wslc$lccat_sarah <- wslc$level1desc
-wslc$lccat_sarah[wslc$level1desc=="forest_needleleaf" |
-                 wslc$level1desc=="forest_broadleaf" |
-                 wslc$level1desc=="forest_mixed"] <- "forest"
 
+# these lines no longer apply 
+#wslc$level1desc[wslc$FID_canlc2015_nolakes_nad83zn8==-1] <- NA
+
+#wslc$lccat_sarah <- wslc$level1desc
+#wslc$lccat_sarah[wslc$level1desc=="forest_needleleaf" |
+#                 wslc$level1desc=="forest_broadleaf" |
+#                 wslc$level1desc=="forest_mixed"] <- "forest"
+
+# code for this section has been summarized given the new structure of wslc 
+
+# summarise land cover area by watershed and landcover category 
 wslc <- wslc %>% 
-        select(Name, lccat_sarah, polygonareakm2) %>%
-        group_by(Name, lccat_sarah) %>%
-        summarize(polygonareakm2=sum(polygonareakm2))
+        select(Name, landcover, polygonareakm2) %>%
+        group_by(Name, landcover) %>%
+        summarize(
+          polygonareakm2=sum(polygonareakm2))
 
+# calculate total wateshed area based on landcover polygons 
 wslcwat <- wslc %>%
            group_by(Name) %>%
-           summarize(sumwatarea=sum(polygonareakm2))
-        t <- merge(wslcwat, bgeowat, by="Name")
-        t$t <- t$sumwatarea.x/t$sumwatarea.y
+           summarize(
+             sumwatarea=sum(polygonareakm2))
+
+# compare the landcover watershe area with bedrock         
+t <- merge(wslcwat, bgeowat, by="Name")
+t$t <- t$sumwatarea.x/t$sumwatarea.y
+
+summary(t$t)
+# looks good 
+
+# merge landcover categeory with totla wateshed area 
 
 wslc <- merge(wslc, wslcwat, by="Name")
-wslc$lccat_sarah_perc <- (wslc$polygonareakm2/wslc$sumwatarea)*100
+
+# calculate the percentage cover 
+wslc$landcover_perc <- (wslc$polygonareakm2/wslc$sumwatarea)*100
         
+# reshape landcover categroies into separate columns 
 wslc <- wslc %>% 
-        pivot_wider(id_cols=Name,
-                    names_from=lccat_sarah,
-                    values_from=lccat_sarah_perc)
+             select(Name, landcover, landcover_perc) %>%
+               pivot_wider(
+                          id_cols = Name,
+                          names_from = landcover,
+                          values_from = landcover_perc
+  )
 
 # merge with master 
 watmaster <- merge(watmaster, wslc, by="Name")
+
+# remove the "NA" column - we don't need it. 
+# this is undistinguishable land cover type that does not impact the data 
+
+watmaster$'NA' <- NULL
 
 # (1.10) Slump percentages ==========
 
@@ -218,51 +408,65 @@ slumpsumwat2016 <- slumps2016 %>%
   select(Name, polygonareakm2) %>%
   group_by(Name) %>%
   summarize(sumwatarea=sum(polygonareakm2))
+
 t <- merge(slumpsumwat2016, bgeowat, by="Name")
 t$t <- t$sumwatarea.x/t$sumwatarea.y
 
 slumps2016 <- merge(slumpsum2016, slumpsumwat2016, by="Name")
+
 slumps2016$percslump2016 <- (slumps2016$sumslump16/slumps2016$sumwatarea)*100
 
+# keep only necessary columns before merge 
+slumps2016 <- slumps2016[, c("Name", "percslump2016")]
 
 #merge with master
 watmaster <- merge(watmaster, slumps2016, by="Name", all.x=TRUE)
 
-# (1.10.1) 2017 Slump percentages ==========
-slumps17old <- read.csv(paste0(df, 
-                              "rtsdelineationsstony_union_watersheds2021061.csv"))
+# (1.10.1) 2017 Slump percentages SEE NOTE ==========
 
+# SKIP -- NOT IN THE FINAL WATMASTER
 
+#slumps17old <- read.csv(paste0(df, 
+#                             "rtsdelineationsstony_union_watersheds2021061.csv"))
+
+## UH-OH!! ## 
 slumps17act <- read.csv(paste0(df, 
                               "rtsdelineationsstonysarahaddCB_union_watersheds2021061.csv"))
+
+# ^^ this file does not exist.
+# it is not "rtsdelineationsstony_union_watersheds2021061"
+# not sure - proceed without for now 
 
 slumps17all <- read.csv(paste0(df, 
                                "allslumpsclippedtowatershed_union_watersheds2021061.csv"))
 
 # slumps 2017 old =====
-slumpsum17old <- slumps17old %>%
-  select(FID_rts_delineations_stony, Name, Shape_Area)%>%
-  filter(FID_rts_delineations_stony!=-1) %>%
-  group_by(Name) %>%
-  summarize(sumslump17=sum(Shape_Area))
 
-slumpsumwat <- slumps17old %>%
-  select(Name, Shape_Area) %>%
-  group_by(Name) %>%
-  summarize(sumwatarea=sum(Shape_Area))
-t <- merge(slumpsumwat, bgeowat, by="Name")
-t$t <- t$sumwatarea.x/t$sumwatarea.y
 
-slumps17 <- merge(slumpsum17old, slumpsumwat, by="Name")
-slumps17$percslump17old <- (slumps17$sumslump17/slumps17$sumwatarea)*100
+#slumpsum17old <- slumps17old %>%
+#  select(FID_rts_delineations_stony, Name, Shape_Area)%>%
+#  filter(FID_rts_delineations_stony!=-1) %>%
+#  group_by(Name) %>%
+#  summarize(sumslump17=sum(Shape_Area))
 
-slumps17old <- slumps17 %>% select(Name, percslump17old)
+#slumpsumwat <- slumps17old %>%
+#  select(Name, Shape_Area) %>%
+#  group_by(Name) %>%
+#  summarize(sumwatarea=sum(Shape_Area))
+#t <- merge(slumpsumwat, bgeowat, by="Name")
+#t$t <- t$sumwatarea.x/t$sumwatarea.y
+
+#slumps17 <- merge(slumpsum17old, slumpsumwat, by="Name")
+#slumps17$percslump17old <- (slumps17$sumslump17/slumps17$sumwatarea)*100
+
+#slumps17old <- slumps17 %>% select(Name, percslump17old)
 
 #merge with master
-watmaster <- merge(watmaster, slumps17old, by="Name", all.x=TRUE)
+#watmaster <- merge(watmaster, slumps17old, by="Name", all.x=TRUE)
 
 # slumps 2017active =====
 
+## SKIPPED FOR NOWW ## 
 slumpsum17act <- slumps17act %>%
   select(FID_rts_delineations_stony_sarahaddCB, Name, Shape_Area)%>%
   filter(FID_rts_delineations_stony_sarahaddCB!=-1) %>%
@@ -322,6 +526,10 @@ slumpacc <- slumpacc%>%
 #merge with master
 watmaster <- merge(watmaster, slumpacc, by="Name", all.x=TRUE)
 
+
+
+# make manual adjustments to the data 
+
 watmaster$strahlerimpactacc[watmaster$Name=="site42"] <- 1
 watmaster$strahlerimpactacc[watmaster$Name=="site48"] <- 1
 
@@ -335,6 +543,7 @@ watmaster$slumpacccount[watmaster$year==2017 &
 
 
 # (1.12) 100 cm organic carbon stocks ==========
+
 oc <- read.csv(paste0(df, "NCSCDv2Canada_int_watersheds2021061.csv"))
 
 oc <- oc %>%
@@ -382,9 +591,9 @@ gl$loc[is.na(gl$loc)] <- "NA"
 gl$loc2[is.na(gl$loc2)] <- "NA"
 
 gl$date <- as.Date(gl$date)
+
 watmaster$date <- as.Date(watmaster$date)
 
-# merge with master
 watmaster <- merge(watmaster, gl, all=TRUE)
 
 watmaster$gldistkm[watmaster$site==27 & !is.na(watmaster$Name)] <- watmaster$gldistkm[watmaster$site==27 & is.na(watmaster$Name)]
@@ -400,7 +609,7 @@ rough <- rough %>% select(Name, meanrough=MEAN)
 #merge with watmaster
 watmaster <- merge(watmaster, rough, all=TRUE)
 
-# (1.13) Revised site 10 details ==========
+# (1.15) Revised site 10 details ==========
 
 watmaster$WatershedArea[watmaster$site==10] <- 105.7384634815
 watmaster$meanrough[watmaster$site==10] <- 2.84464457549354
@@ -445,6 +654,8 @@ watmaster$strahlerstream[watmaster$site==10] <- slumpacc$strahlerstream
 
 # slumps 2017active site 10 revised ===== 
 
+## SKIP THIS SECTION SINCE SOURCE FILE FOR slumps17act IS MISSING 
+
 slumps17act <- read.csv(paste0(df, 
                                "rtsdelineationsstonysarahaddCB_union_revisedsite10wpoly_clip.csv"))
 
@@ -484,60 +695,111 @@ watmaster$percslump17all[watmaster$site==10] <- slumps17$percslump17all
 
 # landcover site 10 revised =====
 
-wslc <- read.csv(paste0(df, "canlc2015nolakesclip_union_revsites10.csv"))
-wslc_legend <- read_excel(paste0(df, "LandCoverCircaCode.xlsx"), sheet="2015")
-wslc$gridcode[wslc$FID_canlc2015_nolakes_nad83zn8==-1] <- NA
-wslc <- wslc %>% select(gridcode, Shape_Area)
-wslc <- merge(wslc, wslc_legend, by="gridcode", all.x=TRUE)
-wslc$level1desc[wslc$FID_canlc2015_nolakes_nad83zn8==-1] <- NA
-wslc$lccat_sarah <- wslc$level1desc
-wslc$lccat_sarah[wslc$level1desc=="forest_needleleaf" |
-                   wslc$level1desc=="forest_broadleaf" |
-                   wslc$level1desc=="forest_mixed"] <- "forest"
+# This section  modified since LandCoverCircaCode does not exist.
+# New LandCover2025 file used to update the codes 
 
+wslc <- read.csv(paste0(df, "canlc2015nolakesclip_union_revsites10.csv"))
+
+# See sectionj 1.9 (Landcover). Read in the file and run the clean-up 
+# to get the simplified categories 
+
+# Do not run this line - file does not exist 
+#wslc_legend <- read_excel(paste0(df, "LandCoverCircaCode.xlsx"), sheet="2015")
+
+
+wslc$gridcode[wslc$FID_canlc2015_nolakes_nad83zn8==-1] <- NA
+
+wslc <- wslc %>% select(gridcode, Shape_Area)
+
+# Note that the first row has "0" value. Not sure why. Proceed anyway. 
+
+wslc <- merge(wslc, wslc_legend, by="gridcode", all.x=TRUE)
+
+# this replaces the -1 value with NA from the row that had a gridcode value of 0
+# this does not apply anymore - it is already NA 
+#wslc$level1desc[wslc$FID_canlc2015_nolakes_nad83zn8==-1] <- NA
+
+#wslc$lccat_sarah <- wslc$level1desc
+
+# not needed since the landcover categories are already simplfiied 
+
+#wslc$lccat_sarah[wslc$level1desc=="forest_needleleaf" |
+#                   wslc$level1desc=="forest_broadleaf" |
+#                   wslc$level1desc=="forest_mixed"] <- "forest"
+
+# assume that "lccat_sarah" is "land cover category" 
+# this adjusted - lccat_sarah became landcover
 wslc <- wslc %>% 
-  select(lccat_sarah, Shape_Area) %>%
-  group_by(lccat_sarah) %>%
+  select(landcover, Shape_Area) %>%
+  group_by(landcover) %>%
   summarize(polygonareakm2=sum(Shape_Area))
 
+# calculate the total watershed area
 wslcwat <- wslc %>%
   summarize(sumwatarea=sum(polygonareakm2))
 
+# merge together, then calculate the percentage 
+# lccat_sarah_perc changed to landcover_perc
 wslc <- merge(wslc, wslcwat)
-wslc$lccat_sarah_perc <- (wslc$polygonareakm2/wslc$sumwatarea)*100
+wslc$landcover_perc <- (wslc$polygonareakm2/wslc$sumwatarea)*100
+
 
 wslc$site <- "10"
+
+# convert to long format - now it is ready to add back into the watmaster 
 wslc <- wslc %>% 
-  select(site, lccat_sarah, lccat_sarah_perc)%>%
-  pivot_wider(names_from=lccat_sarah,
-              values_from=lccat_sarah_perc)
+  select(site, landcover, landcover_perc)%>%
+  pivot_wider(names_from=landcover,
+              values_from=landcover_perc)
 
 #correct in watmaster file
-watmaster$`barren land`[watmaster$site==10] <- wslc$`barren land`
-watmaster$forest[watmaster$site==10] <- wslc$forest
-watmaster$grassland[watmaster$site==10] <- wslc$grassland
-watmaster$`lichen/moss`[watmaster$site==10] <- wslc$`lichen/moss`
-watmaster$shrubland[watmaster$site==10] <- wslc$shrubland
-watmaster$`urban and built-up`[watmaster$site==10] <- wslc$`urban and built-up`
-watmaster$water[watmaster$site==10] <- wslc$water
-watmaster$wetland[watmaster$site==10] <- wslc$wetland
+# replace these values directly, skipping this block of code (it is not 
+# necessary withe new setup) 
+
+# watmaster has only one row where site == 10, so it is an easy replace. 
+
+#watmaster$`barren land`[watmaster$site==10] <- wslc$`barren land`
+#watmaster$forest[watmaster$site==10] <- wslc$forest
+#watmaster$grassland[watmaster$site==10] <- wslc$grassland
+#watmaster$`lichen/moss`[watmaster$site==10] <- wslc$`lichen/moss`
+#watmaster$shrubland[watmaster$site==10] <- wslc$shrubland
+#watmaster$`urban and built-up`[watmaster$site==10] <- wslc$`urban and built-up`
+#watmaster$water[watmaster$site==10] <- wslc$water
+#watmaster$wetland[watmaster$site==10] <- wslc$wetland
+
+
+# Omit the "NA" category - -
+cols_to_replace <- c(
+  "barrenland", "forest", "grassland", "lichenmoss",
+  "shrubland", "urbanbuilt", "water", "wetland"
+)
+
+watmaster[watmaster$site == 10, cols_to_replace] <- 
+  wslc[wslc$site == 10, cols_to_replace]
+
 
 # Watershed bedrock geology site 10 revised ==========
 bgeo <- read.csv(paste0(df, "watershedbedgeol_nad83zn8_revsite10.csv"))
+
 bgeo$shale <- NA
 bgeo$shale[bgeo$Lithology1=="Shale" | 
              bgeo$Lithology2=="Shale" |
              bgeo$Lithology3=="Shale" |
              bgeo$Lithology4=="Shale"] <- "Y"
+
 bgeo <- bgeo %>% select(Shape_Area, shale) 
+
 bgeowat <- bgeo %>%
   summarise(sumwatarea = sum(Shape_Area))
+
 bgeoshale <- bgeo %>%
   group_by(shale) %>%
   summarise(sumshalearea = sum(Shape_Area))
+
 bgeo <- merge(bgeoshale, bgeowat)
 bgeo$percshale <- (bgeo$sumshalearea/bgeo$sumwatarea)*100
 bgeo <- bgeo[!is.na(bgeo$shale),]
+
 bgeo <- bgeo %>%
   select(percshale)
 
@@ -545,7 +807,11 @@ bgeo <- bgeo %>%
 watmaster$percshale[watmaster$site==10] <- bgeo$percshale
 
 # Watershed surficial geology site 10 revised ==========
+
+## SKIP THIS SECTION SINCE THE SURFICIAL GEOLOGY WAS ALREADY RE-DONE 
+
 sgeo <- read.csv(paste0(df, "watershedgeol_nad83zn8_revsite10.csv"))
+
 sgeo <- sgeo %>% select(geoltype=Name, Shape_Area)
 sgeowat <- sgeo %>%
   summarise (sumwatarea = sum(Shape_Area))
@@ -593,47 +859,81 @@ watmaster$scaledgpp[watmaster$site==10] <- 2505.40446373062*0.0001 # see google 
 watmaster$scalednpp[watmaster$site==10] <- 2955.97681159213*0.0001
 
 # (2.2) Create master file ==========
+
+
+# The code has been adjusted since most clean-up is already done 
+# Use this opportunity to rename the columns to match with the original "watmaster"
+# file. 
+
+#watmaster <- watmaster %>%
+#             select(Name,
+#                    site, loc, trans,
+#                    date, lat, long,
+#                    year, campaign, trannum, loc2,
+#                    WatershedArea, percshale,
+#                    colluvial_perc=Colluvial, 
+#                    piedmont_perc=Piedmont,
+#                    alluvial_perc=Alluvial,
+#                    bedrock_perc=Bedrock, 
+#                    fluvial_perc=Fluvial, 
+#                    glaciogenic_perc=Glaciogenic,
+#                    moraine_perc=Moraine, 
+#                    organic_perc=Organic, 
+#                    lakeperc,
+#                    scaledgpp, scalednpp,
+#                    meanelev_m, meanslope_deg,
+#                    barrenland_perc=`barren land`,
+#                    #forestneedle_perc=forest_needleleaf,
+#                   #forestbroad_perc=forest_broadleaf,
+#                    #forestmixed_perc=forest_mixed,
+#                    forest_perc=forest,
+#                    grassland_perc=grassland,
+#                    lichenmoss_perc=`lichen/moss`,
+#                    shrubland_perc=shrubland,
+#                    water_perc=water,
+#                    urbanbuilt_perc=`urban and built-up`,
+#                    wetland_perc=wetland,
+#                    percslump2016,
+#                    percslump17act,
+#                    percslump17all,
+#                    slumpacccount,
+#                    strahlerimpactacc, 
+#                    wmeanSOCC_100CM,
+#                    gldistkm, meanrough,
+#                    strahlerstream)
+
+# check the column name of watmaster
+colnames(watmaster)
+
+# remove columns that are unnecessary 
+cols_to_remove <- c("notes", "Shape_Length", "Shape_Area", "sumwatarea",
+                    "waterDefinitionText", "sumlakearea")
+
+watmaster <- watmaster %>% 
+  select(-all_of(cols_to_remove))
+
+# rename some of the columns 
 watmaster <- watmaster %>%
-             select(Name,
-                    site, loc, trans,
-                    date, lat, long,
-                    year, campaign, trannum, loc2,
-                    WatershedArea, percshale,
-                    colluvial_perc=Colluvial, 
-                    piedmont_perc=Piedmont,
-                    alluvial_perc=Alluvial,
-                    bedrock_perc=Bedrock, 
-                    fluvial_perc=Fluvial, 
-                    glaciogenic_perc=Glaciogenic,
-                    moraine_perc=Moraine, 
-                    organic_perc=Organic, 
-                    lakeperc,
-                    scaledgpp, scalednpp,
-                    meanelev_m, meanslope_deg,
-                    barrenland_perc=`barren land`,
-                    #forestneedle_perc=forest_needleleaf,
-                    #forestbroad_perc=forest_broadleaf,
-                    #forestmixed_perc=forest_mixed,
-                    forest_perc=forest,
-                    grassland_perc=grassland,
-                    lichenmoss_perc=`lichen/moss`,
-                    shrubland_perc=shrubland,
-                    water_perc=water,
-                    urbanbuilt_perc=`urban and built-up`,
-                    wetland_perc=wetland,
-                    percslump2016,
-                    percslump17act,
-                    percslump17all,
-                    slumpacccount,
-                    strahlerimpactacc, 
-                    wmeanSOCC_100CM,
-                    gldistkm, meanrough,
-                    strahlerstream)
+  rename(
+    colluvial_perc = Colluvial,
+    morainal_perc = Morainal,
+    alluvial_perc = Alluvial,
+    glaciofluvial_perc = Glaciofluvial,
+    organic_perc = Organic,
+    glaciolacustrine_perc = Glaciolacustrine,
+    barrenland_perc = barrenland,
+    forest_perc = forest,
+    grassland_perc = grassland,
+    lichenmoss_perc = lichenmoss,
+    shrubland_perc = shrubland,
+    water_perc = water,
+    urbanbuilt_perc = urbanbuilt,
+    wetland_perc = wetland
+  )
 
 # check how variables compare to each other
-
-pairs(watmaster[,12:ncol(watmaster)])
+#pairs(watmaster[,12:ncol(watmaster)])
 # consider just removing land cover...
 
 # print watmaster
-write.csv(watmaster, paste0(df, "watmaster.csv"))
+write.csv(watmaster, paste0(df, "watmaster_wlakes_2026.csv"))

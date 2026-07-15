@@ -40,6 +40,103 @@ source("functions/HighstatLibV10.R")
 ## (1.1) Read in file ====================
 d <- read.csv(paste0(df, "synopticflux.csv"))
 
+colnames(d)
+
+## (1.11) Update the surficial geology 
+
+# read in the updated watmaster file 
+watmaster <- read.csv("D:/5_Projects/git/repos/Phd_Ch3/data/watmaster_wlakes_2026.csv")
+
+# replace NA in the surficial geology columns with 0
+
+watmaster <- watmaster %>%
+  mutate(
+    across(
+      c(
+        colluvial_perc,
+        morainal_perc,
+        alluvial_perc,
+        glaciofluvial_perc,
+        organic_perc,
+        glaciolacustrine_perc
+      ),
+      ~ replace_na(.x, 0)
+    )
+  )
+
+
+
+# Columns to bring in from watmaster
+watmaster_cols <- c(
+  "site",
+  "date",
+  "trans",
+  "percshale",
+  "colluvial_perc",
+  "morainal_perc",
+  "alluvial_perc",
+  "glaciofluvial_perc",
+  "organic_perc",
+  "glaciolacustrine_perc",
+  "lakeperc"
+)
+
+# Columns to remove from d before adding updated columns from watmaster
+cols_to_remove_from_d <- c(
+  "percshale",
+  "colluvial_perc",
+  "piedmont_perc",
+  "alluvial_perc",
+  "bedrock_perc",
+  "fluvial_perc",
+  "glaciogenic_perc",
+  "organic_perc",
+  "moraine_perc",
+  "lakeperc"
+)
+
+# check if there are any missing site-dates in watmaster
+missing_site_dates <- d %>%
+  distinct(site, date) %>%
+  anti_join(
+    watmaster %>% distinct(site, date),
+    by = c("site", "date")
+  )
+
+# View missing combinations
+missing_site_dates
+# yes - there are two 
+
+# Subset watmaster to only site-date combinations present in d
+watmaster_subset <- watmaster %>%
+  semi_join(
+    d %>% select(site, date),
+    by = c("site", "date")
+  ) %>%
+  select(all_of(watmaster_cols))
+
+# Remove old columns from d, then add selected watmaster columns by site and date
+d_updated <- d %>%
+  select(-any_of(cols_to_remove_from_d)) %>%
+  left_join(
+    watmaster_subset,
+    by = c("site", "date")
+  )
+
+# Check result
+dim(d_updated)
+head(d_updated)
+
+# Optional: check whether watmaster has duplicate site-date combinations
+# Doesn't matter because none of the SE samples are used here 
+watmaster %>%
+  count(site, date) %>%
+  filter(n > 1)
+
+## Rename d_updated to d and continue 
+
+d <- d_updated
+
 d$wateryield <- (d$dism3s*1000)/d$WatershedArea
 
 ## (1.2) Select variables ====================
@@ -54,13 +151,17 @@ d <- d%>%
          wateryield,
          WatershedArea, 
          percshale, # bedrock,
-         colluvial_perc, piedmont_perc, # surficial geology
-         alluvial_perc, # few sites with alluvial and low percentages when present
-         bedrock_perc, # no bedrock perc
-         fluvial_perc, # only1 fluvial perc
-         glaciogenic_perc, #only2 glaciogenic perc
+         colluvial_perc,
+       #  piedmont_perc, # surficial geology
+        alluvial_perc, # few sites with alluvial and low percentages when present
+    #   bedrock_perc, # no bedrock perc
+    #     fluvial_perc, # only1 fluvial perc
+       #   glaciogenic_perc,
+          glaciofluvial_perc, #only2 glaciogenic perc
+         glaciolacustrine_perc, 
          organic_perc, # very little organic coverage
-         moraine_perc, # surficial geology
+    #  moraine_perc,
+       morainal_perc, # surficial geology
          lakeperc, 
          #water_perc, #waterbodies includes river water bodies, want to specify lakes
          scaledgpp, #scalednpp, not npp because of strong correlation to gpp, write that in methods
@@ -68,7 +169,8 @@ d <- d%>%
          barrenland_perc, forest_perc, grassland_perc, #landcover
          lichenmoss_perc, shrubland_perc, # landcover
          wetland_perc, #essentially no wetland cover
-         percslump, slumpacccount,
+         percslump2017,              # originally "percslump"  
+         slumpacccount,
          wmeanSOCC_100CM,
          gldistkm,
          meanrough,
@@ -97,14 +199,18 @@ dotchart(d$WatershedArea) # site 10 potentially outlier
 
 # geology
 dotchart(d$percshale)
-dotchart(d$colluvial_perc)
+
+dotchart(d$colluvial_perc) # looks good 
 dotchart(d$piedmont_perc)
-dotchart(d$alluvial_perc) # alot of zeros
-dotchart(d$bedrock_perc) # all zeros
-dotchart(d$fluvial_perc) # only 1 not zero
-dotchart(d$glaciogenic_perc) # only 2 not zero
-dotchart(d$organic_perc) # only 4 not zero, site 38 might be an outlier
-dotchart(d$moraine_perc)
+dotchart(d$alluvial_perc) # mostly zeros
+dotchart(d$glaciogenic_perc)
+#dotchart(d$glaciofluvial_perc) # mostly zeros
+#dotchart(d$glaciolacustrine_perc) # mostly zeros
+dotchart(d$organic_perc) # mostly zeros, looks good 
+#dotchart(d$morainal_perc) #
+dotchart(d$moraine_perc) # high coverage 
+#dotchart(d$bedrock_perc) # all zeros
+#dotchart(d$fluvial_perc) # only 1 not zero
 
 
 dotchart(d$lakeperc) # keep an eye on site 35 as an outlier, but honestly doesn't seem hugely concerning
@@ -121,7 +227,8 @@ dotchart(d$shrubland_perc) # site 12-1 potentially an outlier
 dotchart(d$wetland_perc) # I think remove wetland because essentially no wetland coverage (only 2 sites are non-zero)
 
 # slump
-dotchart(d$percslump)
+
+dotchart(d$percslump2017)     # <-- Changed from "percslump"
 dotchart(d$slumpacccount)
 
 #SOC
@@ -145,73 +252,95 @@ dotchart(d$wateryield)
 # (2.1) Step 2: Transformations for outlier data and removal of variables lacking data
 
 dotchart(log10(d$tocyield+1))
-d$logtocy <- log10(d$tocyield)
-
 dotchart(log10(d$pocyield))
+
+
 d$logpocy <- log10(d$pocyield)
-
+d$logtocy <- log10(d$tocyield)
 d$logdocy <- log10(d$docyield)
-
 d$logwy <- log10(d$wateryield)
 
 # arcsine percent transformations
 d$shale_as <- asin(sqrt(((d$percshale)/100)))
+
+# surficial geo
 d$col_as <- asin(sqrt(((d$colluvial_perc)/100)))
-d$pied_as <- asin(sqrt(((d$piedmont_perc)/100)))
-d$moraine_as <- asin(sqrt(((d$moraine_perc)/100)))
+d$moraine_as <- asin(sqrt(((d$morainal_perc)/100)))
+
+# for original, 
+#d$col_as <- asin(sqrt(((d$colluvial_perc)/100)))
+#d$moraine_as <- asin(sqrt(((d$moraine_perc)/100)))
+#d$pied_as <- asin(sqrt(((d$piedmont_perc)/100)))
+
 d$barren_as <- asin(sqrt(((d$barrenland_perc)/100)))
 d$grass_as <-  asin(sqrt(((d$grassland_perc)/100)))
 d$lichen_as <- asin(sqrt(((d$lichenmoss_perc)/100)))
-d$pslump_as <- asin(sqrt(((d$percslump)/100)))
-d$lake_as <- asin(sqrt(((d$lakeperc)/100)))
 d$forest_as <- asin(sqrt(((d$forest_perc)/100)))
 d$shrub_as <- asin(sqrt(((d$shrubland_perc)/100)))
+
+d$pslump_as <- asin(sqrt(((d$percslump2017)/100)))          # updated to "percslump2017" 
+
+d$lake_as <- asin(sqrt(((d$lakeperc)/100)))
+
 d$pPOC_as <- asin(sqrt(((d$percPOCy)/100)))
 
-d <- d %>% 
+# only colluvial and morainal for surficial geo
+d_model <- d %>% 
   select(site,
          logtocy, logpocy, logdocy, pPOC_as, JDay,
          logwy,
          shale_as,
-         col_as, pied_as, moraine_as,
+         col_as, moraine_as, 
+         #pied_as, # updatred line
          lake_as, scaledgpp, 
          meanelev_m, meanslope_deg, 
          barren_as, forest_as, grass_as, lichen_as,
          shrub_as, pslump_as, slumpacccount,
          wmeanSOCC_100CM, gldistkm, meanrough, RainTot96)
 
-pairs(d[, c(6:ncol(d))], 
+pairs(d_model[, c(6:ncol(d_model))], 
       lower.panel=panel.smooth2, 
       upper.panel=panel.cor,
       diag.panel=panel.hist)
 
-d <- d %>%
-    select(-meanslope_deg, -barren_as, -meanelev_m, -scaledgpp)
+corvif(d_model[, c(6:ncol(d_model))])
 
+d_model <- d_model %>%
+  select(-meanslope_deg, -barren_as, -meanelev_m, -scaledgpp)
 
-corvif(d[, c(6:ncol(d))])
+corvif(d_model[, c(6:ncol(d_model))])
 
-d <- d %>%
+# colluval still high VIF, rest look ok 
+d_model <- d_model %>%
   select(-col_as, -RainTot96, -shale_as, -shrub_as) 
 
-pairs(d[, c(6:ncol(d))], 
+# try just col and shrub
+#d <- d %>%
+#  select(-col_as,  -shrub_as) 
+
+pairs(d_model[, c(6:ncol(d_model))], 
       lower.panel=panel.smooth2, 
       upper.panel=panel.cor,
       diag.panel=panel.hist)
 
-corvif(d[, c(6:ncol(d))])
+corvif(d_model[, c(6:ncol(d_model))])
 
-d <- d %>%
+# everything looks good - does not seem like moraine needs to be removed 
+# but maybe remove gldistkm since it is the closest to 10 
+#d <- d %>%
+#  select(-gldistkm) 
+
+d_model <- d_model %>%
   select(-moraine_as) 
 
-corvif(d[, c(6:ncol(d))])
+corvif(d_model[, c(6:ncol(d_model))])
 
-d <- d %>%
+d_model <- d_model %>%
   select(-forest_as) 
 
-corvif(d[, c(6:ncol(d))])
+corvif(d_model[, c(6:ncol(d_model))])
 
-pairs(d[, c(2:ncol(d))], 
+pairs(d_model[, c(2:ncol(d_model))], 
       lower.panel=panel.smooth2, 
       upper.panel=panel.cor,
       diag.panel=panel.hist)
@@ -221,26 +350,47 @@ pairs(d[, c(2:ncol(d))],
 # model fit is singular for JDay as random effect, therefore can't use lmer
 
 toc <- lm(logtocy ~ pied_as + lake_as + grass_as + lichen_as + pslump_as +
-               slumpacccount + wmeanSOCC_100CM + gldistkm + meanrough + JDay + logwy,
-          data=d)
+            slumpacccount + wmeanSOCC_100CM + gldistkm + meanrough + JDay + logwy,
+          data=d_model)
+
+# Updated model using the predictors shown in VIF output
+toc <- lm(logtocy ~ JDay + logwy + shale_as + moraine_as + lake_as +
+            forest_as + grass_as + lichen_as + pslump_as +
+            slumpacccount + wmeanSOCC_100CM + meanrough + RainTot96,
+          data = d)
+
 
 step(toc, direct="backward")
 drop1(toc)
 
 
-poc <- lm(logpocy ~ pied_as + lake_as + grass_as + lichen_as + pslump_as +
-            slumpacccount + wmeanSOCC_100CM + gldistkm + meanrough + JDay + logwy,
-          data=d)
+#poc <- lm(logpocy ~ pied_as + lake_as + grass_as + lichen_as + pslump_as +
+#            slumpacccount + wmeanSOCC_100CM + gldistkm + meanrough + JDay + logwy,
+#          data=d)
+
+# Updated model using the predictors shown in VIF output
+poc <- lm(logpocy ~ JDay + logwy + shale_as + moraine_as + lake_as +
+            forest_as + grass_as + lichen_as + pslump_as +
+            slumpacccount + wmeanSOCC_100CM + meanrough + RainTot96,
+          data = d)
+
 
 step(poc, direct="backward")
 drop1(poc)
 plot(poc)
 
+#doc <- lm(logdocy ~ pied_as + lake_as + grass_as + lichen_as + pslump_as +
+#            slumpacccount + wmeanSOCC_100CM + gldistkm + meanrough + JDay + logwy,
+#          data=d)
 
-doc <- lm(logdocy ~ pied_as + lake_as + grass_as + lichen_as + pslump_as +
-            slumpacccount + wmeanSOCC_100CM + gldistkm + meanrough + JDay + logwy,
-          data=d)
+# Updated model using the predictors shown in VIF output
+doc <- lm(logdocy ~ JDay + logwy + shale_as + moraine_as + lake_as +
+            forest_as + grass_as + lichen_as + pslump_as +
+            slumpacccount + wmeanSOCC_100CM + meanrough + RainTot96,
+          data = d)
+
 step(doc, direct="backward")
+
 drop1(doc)
 plot(doc)
 
@@ -270,9 +420,12 @@ exp <- d
 
 ## DCA
 DCA <- exp[,2:ncol(exp)]
+
 DCA$gldistkm <- DCA$gldistkm+2
+
 comp.dca <- decorana(DCA) 
 summary(comp.dca)
+
 ## axis lengths are less than 1.5
 
 # PCA based on a correlation matrix

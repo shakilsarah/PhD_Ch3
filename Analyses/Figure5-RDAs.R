@@ -351,6 +351,52 @@ out
 
 #adonis2(Y ~ JDay + pslumpact_log + logwy + loggpp, data=d, permutations = 5000)
 
+
+##### ========== (6) Linear model of TOC ==========================================================================
+### (6.1) TOC ====
+l <- lm(log10(tocyield) ~ percslump17act + scaledgpp + wateryield,
+        data =darch)
+summary(l)
+
+l <- lm(log10(tocyield) ~ percslump17act + wateryield,
+        data =darch)
+summary(l)
+
+darch$predtoc <- (darch$percslump17act*0.89315) + (darch$wateryield*0.01941) + 1.15933
+
+ggplot() + geom_point(data=darch, 
+                      aes(y=predtoc, x=log10(tocyield))) +
+  geom_abline(slope=1) + theme()
+
+### (6.2) POC ====
+l <- lm(log10(pocyield) ~ percslump17act + scaledgpp + wateryield,
+        data =darch)
+
+summary(l)
+
+l <- lm(log10(pocyield) ~ percslump17act,
+        data =darch)
+
+summary(l)
+
+darch$predtoc <- (darch$percslump17act*0.89315) + (darch$wateryield*0.01941) + 1.15933
+
+ggplot() + geom_point(data=darch, 
+                      aes(y=predtoc, x=log10(tocyield))) +
+  geom_abline(slope=1) + theme()
+
+
+### (6.3) DOC ====
+l <- lm(log10(docyield) ~ percslump17act + scaledgpp + wateryield,
+        data =darch)
+
+summary(l)
+
+l <- lm(log10(docyield) ~ scaledgpp + wateryield,
+        data =darch)
+
+summary(l)
+
 ##### ========== (4) Plot RDA analysis (PANEL A) ==========================================================================
 library(ggrepel) # Load ggrepel for non-overlapping labels
 
