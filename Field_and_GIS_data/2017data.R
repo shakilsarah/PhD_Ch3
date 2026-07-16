@@ -13,7 +13,7 @@ list=rm(list=ls(all=TRUE))
 
 ## Set working directory
 
-df <- "Data/"
+df <- "data/"
 
 # load libraries
 library(dplyr)

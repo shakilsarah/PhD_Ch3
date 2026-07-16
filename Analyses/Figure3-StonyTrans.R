@@ -15,7 +15,7 @@
 list=rm(list=ls(all=TRUE))
 
 ## Set working directory
-df <- "Data/"
+df <- "data/"
 
 # load libraries
 library(dplyr)
@@ -44,7 +44,7 @@ d <- read.csv(paste0(df, "2017data.csv"))
 ## (1.11) Update the surficial geology =============================
 
 # read in the updated watmaster file 
-watmaster <- read.csv("D:/5_Projects/git/repos/Phd_Ch3/data/watmaster_wlakes_2026.csv")
+watmaster <- read.csv(paste0(df,"watmaster_wlakes_2026.csv"))
 
 # replace NA in the surficial geology columns with 0
 
@@ -729,7 +729,6 @@ if(!dir.exists("Figures/Fig3")) {
 ggsave("Figures/Fig3/StonyCreekTransect_FullFigure.pdf", final_figure, width = 10, height = 15)
 ggsave("Figures/Fig3/StonyCreekTransect_FullFigure.png", final_figure, width = 10, height = 15, dpi = 300)
 
->>>>>>> 88ba80aeb5fec992760acba6d25d3a434ec889fb:Analyses/Figure3-StonyTrans.R
 ## (2.4) Stats ====================
 
 library(car)
