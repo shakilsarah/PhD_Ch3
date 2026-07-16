@@ -202,6 +202,13 @@ o <- read.csv(paste0(df, "masteroptics2.csv"))
 o <- o %>%
   select(site, date, JDay, prcntC1_p, prcntC3_p, prcntC2_p, prcntC4_p, prcntC5_p,
          SR_d, SUVA254, slumpYN)
+
+#o$prcntC1_p <-as.numeric(o$prcntC1_p)
+#o$prcntC2_p <-as.numeric(o$prcntC2_p)
+#o$prcntC3_p <-as.numeric(o$prcntC3_p)
+#o$prcntC4_p <-as.numeric(o$prcntC4_p)
+#o$prcntC5_p <-as.numeric(o$prcntC5_p)
+
 o$sum <- (o$prcntC1_p) + o$prcntC2_p + o$prcntC3_p + o$prcntC4_p
 o$date <- as.character(as.Date(o$date))
 
@@ -375,14 +382,11 @@ wdes2 <- ggplot() +
   scalex +
   theme + theme(legend.position="top")
 
-<<<<<<< HEAD:Analyses/StonyCreekTransect.R
 # Close all active graphics devices
 graphics.off()
 wdes2
 
 ## (2.4.2) Conc orig ======
-=======
->>>>>>> 88ba80aeb5fec992760acba6d25d3a434ec889fb:Analyses/Figure3-StonyTrans.R
 
 ## (2.4.3) Conc and Yield (yield_doc and yield_poc) ======
 
@@ -625,8 +629,6 @@ rain <- ggplot() +
 
 
 ## (2.5) PRINT SINGLE FIGURE ====================
-
-<<<<<<< HEAD:Analyses/StonyCreekTransect.R
 library(grid)
 library(svglite)
 
@@ -656,7 +658,7 @@ savePlotSVG <- function(myPlot, w, h, filename, out_dir = "Figures") {
 }
 
 # Choose where you want the plots saved
-fig_dir <- "D:/5_Projects/Shakil_Ch3/figures/transect"
+fig_dir <- "figures/transect"
 
 # Save figures as SVGs
 savePlotSVG(
@@ -702,8 +704,6 @@ savePlotSVG(
 )
 
 
-
-=======
 # Combine all plots using patchwork syntax:
 # / denotes a new row, | denotes side-by-side
 final_figure <- rain /

@@ -45,7 +45,7 @@ colnames(d)
 ## (1.11) Update the surficial geology 
 
 # read in the updated watmaster file 
-watmaster <- read.csv("D:/5_Projects/git/repos/Phd_Ch3/data/watmaster_wlakes_2026.csv")
+watmaster <- read.csv(paste0(df,"watmaster_wlakes_2026.csv"))
 
 # replace NA in the surficial geology columns with 0
 
